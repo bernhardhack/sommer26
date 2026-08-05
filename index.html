@@ -446,11 +446,36 @@ function load(){
   return null;
 }
 function save(){
-  S.updatedAt = Date.now();
+  const sg = sigOf(S);
+  const changed = (lastSig !== null && sg !== lastSig);
+  if(changed) S.updatedAt = Date.now();
+  lastSig = sg;
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ canPersist = false; }
-  schedulePush();
+  if(changed) schedulePush();
+}
+function writeLocal(){
+  lastSig = sigOf(S);
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ canPersist = false; }
 }
 function saved(msg){ save(); toast(msg || (canPersist ? "Gespeichert" : "Nur in dieser Sitzung")); }
+
+/* A signature of the plan's actual content. Device-local things — the
+   view toggle, timestamps, the sync baseline — are deliberately out, so
+   opening a day or switching views is not mistaken for an edit. */
+const SIG_KEYS = ["title","subtitle","start","end","base","days","people","places","ideas"];
+function stable(v){
+  if(Array.isArray(v)) return "["+v.map(stable).join(",")+"]";
+  if(v && typeof v === "object"){
+    return "{"+Object.keys(v).sort().map(function(k){ return JSON.stringify(k)+":"+stable(v[k]); }).join(",")+"}";
+  }
+  return JSON.stringify(v === undefined ? null : v);
+}
+function sigOf(o){
+  const t = {};
+  SIG_KEYS.forEach(function(k){ t[k] = o[k]; });
+  return stable(t);
+}
+let lastSig = null;
 
 function b64enc(str){
   const bytes = new TextEncoder().encode(str);
@@ -572,13 +597,17 @@ async function pushRemote(){
     }
     const j = await r.json();
     remoteSha = j.content && j.content.sha;
+    S.baseSig = sigOf(S);
+    writeLocal();
     setSync("ok");
   }catch(e){
     setSync("err", e.message);
   }
 }
+let syncReady = false, pushPending = false;
 function schedulePush(){
   if(!sync.token) return;
+  if(!syncReady){ pushPending = true; setSync("dirty"); return; }
   clearTimeout(pushT);
   setSync("dirty");
   pushT = setTimeout(pushRemote, 2000);
@@ -598,27 +627,58 @@ function setSync(st, msg){
              ok:"Auf allen Geräten", err:"Sync-Fehler"+(msg?" ("+esc(msg)+")":"")};
   el.innerHTML = '<span class="dot '+(st==="err"?"err":"sync")+'"></span> '+(m[st]||"");
 }
-async function initialSync(){
-  let remote = null;
-  try{ remote = await pullRemote(); }
-  catch(e){ setSync("err", e.message); return; }
-  if(!remote){ if(sync.token) setSync("idle"); return; }
+let lastSyncAt = 0;
+function adopt(remote){
+  const v = S.view;
+  S = remote;
+  S.view = v;
+  S.baseSig = sigOf(remote);
+  writeLocal();
+  applyView(); render(); loadWeather();
+}
+function finishSync(){
+  syncReady = true;
+  if(pushPending){ pushPending = false; schedulePush(); }
+}
+function reconcile(remote){
+  const rs = sigOf(remote), ls = sigOf(S), bs = S.baseSig;
 
-  const localT  = (S && S.updatedAt) || 0;
-  const remoteT = remote.updatedAt || 0;
-
-  if(!stored){
-    S = remote; save(); applyView(); render(); loadWeather();
-    setSync(sync.token ? "ok" : "reader-synced"); return;
+  if(rs === ls){                      // already agree
+    S.baseSig = rs; writeLocal();
+    setSync(sync.token ? "ok" : "reader-synced"); finishSync(); return;
   }
-  if(remoteT > localT){
-    if(sync.token){ S = remote; save(); applyView(); render(); loadWeather(); setSync("ok"); toast("Neuer Stand geladen"); }
-    else offerRemote(remote);
+  if(bs && ls === bs){                // untouched here, moved there
+    adopt(remote); toast("Neuer Stand geladen");
+    setSync(sync.token ? "ok" : "reader-synced"); finishSync(); return;
+  }
+  if(bs && rs === bs){                // edited here, unchanged there
+    finishSync();
+    if(sync.token) pushRemote(); else setSync("reader-local");
     return;
   }
-  if(sync.token && localT > remoteT){ pushRemote(); return; }
-  if(sync.token){ setSync("ok"); return; }
-  setSync(localT > remoteT ? "reader-local" : "reader-synced");
+  if(!bs){                            // no baseline yet — never clobber the repo
+    if((remote.updatedAt || 0) >= (S.updatedAt || 0)){
+      adopt(remote); toast("Neuer Stand geladen");
+      setSync(sync.token ? "ok" : "reader-synced"); finishSync(); return;
+    }
+    finishSync(); offerRemote(remote); return;
+  }
+  finishSync(); offerRemote(remote);  // both moved
+}
+async function initialSync(){
+  lastSyncAt = Date.now();
+  let remote = null;
+  try{ remote = await pullRemote(); }
+  catch(e){ setSync("err", e.message); finishSync(); return; }
+  if(!remote){
+    finishSync();
+    if(sync.token){ setSync("idle"); pushRemote(); }
+    return;
+  }
+  if(!stored && !S.baseSig){
+    adopt(remote); setSync(sync.token ? "ok" : "reader-synced"); finishSync(); return;
+  }
+  reconcile(remote);
 }
 function offerRemote(remote){
   const b = document.getElementById("banner");
@@ -626,9 +686,13 @@ function offerRemote(remote){
     "Der veröffentlichte Plan ist neuer als deine Version auf diesem Gerät. Ohne Sync-Token bleiben deine Änderungen nur hier.";
   b.classList.add("on");
   document.getElementById("bLoad").onclick = function(){
-    S = remote; save(); b.classList.remove("on"); applyView(); render(); loadWeather(); toast("Aktueller Plan geladen");
+    adopt(remote); b.classList.remove("on");
+    setSync(sync.token ? "ok" : "reader-synced"); toast("Aktueller Plan geladen");
   };
-  document.getElementById("bKeep").onclick = function(){ b.classList.remove("on"); };
+  document.getElementById("bKeep").onclick = function(){
+    b.classList.remove("on");
+    if(sync.token) pushRemote(); else setSync("reader-local");
+  };
 }
 
 /* ================= dates ================= */
@@ -1228,7 +1292,7 @@ function openSettings(){
     try{
       const r = await pullRemote();
       if(!r){ toast("Noch kein plan.json"); return; }
-      S = r; save(); applyView(); render(); loadWeather(); toast("Geholt");
+      adopt(r); setSync(sync.token ? "ok" : "reader-synced"); toast("Geholt");
     }catch(e){ toast("Fehler: "+e.message); }
   };
   sheet.querySelector("#pushNow").onclick = function(){ pushRemote().then(function(){ toast("Hochgeladen"); }); };
@@ -1332,7 +1396,13 @@ document.getElementById("ideas").addEventListener("blur", function(e){
   el.addEventListener("keydown", function(ev){ if(ev.key==="Enter"){ ev.preventDefault(); el.blur(); } });
 });
 
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible" && Date.now() - lastSyncAt > 10000) initialSync();
+});
+window.addEventListener("online", function(){ initialSync(); });
+
 checkSeedVersion();
+lastSig = sigOf(S);
 applyView();
 render();
 loadWeather();

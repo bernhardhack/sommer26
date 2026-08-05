@@ -61,7 +61,9 @@ A reader who never enters a token simply can't write. Their local edits stay on 
 | **Export / Import** | The same data as a JSON file. |
 | **Edit `seed()`** | The fallback plan for someone with no `plan.json` and no local copy. Bump `SEED_VERSION` when you change it. |
 
-For several people editing at once you'd need real conflict handling. This is last-write-wins, which is correct for one editor and wrong for a family.
+Devices compare a **signature of the plan's content**, not clocks. Switching view or opening a day is not an edit, so it can't make a device wrongly believe it's ahead. On opening, a device that hasn't changed anything takes the published version silently; one that has diverged gets a banner and chooses. The app also re-checks whenever it comes back to the foreground, so bringing the phone out of your pocket is enough to pull the latest.
+
+For several people editing at once you'd still want real merging. This resolves whole-plan conflicts by asking, which is right for one editor and thin for a family.
 
 ## Weather
 
