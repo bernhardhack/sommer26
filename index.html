@@ -194,6 +194,15 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   background:#fff;border:1px dashed var(--line-2);border-radius:999px;padding:8px 14px;cursor:pointer;color:var(--text)}
 .rec:hover{border-style:solid;border-color:var(--text)}
 .rec .k{display:inline-flex;opacity:.75}
+.rec.plain{border-style:solid;border-color:var(--line);color:var(--text-2)}
+.rec.plain:hover{border-color:var(--text);color:var(--text)}
+.disclose{display:inline-flex;align-items:center;gap:8px;font-family:var(--font);font-size:13px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--text-2);background:none;border:0;padding:4px 0;cursor:pointer}
+.disclose:hover{color:var(--text)}
+.disclose .chev{transition:transform .18s ease;font-size:11px;display:inline-block}
+.disclose[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.disclose .cnt{font-size:11px;font-weight:700;letter-spacing:0;background:#F0F0EC;color:var(--text-2);
+  border-radius:999px;padding:2px 8px}
 .idea .kind svg{display:block}
 .idea .del{background:none;border:0;color:var(--text-3);cursor:pointer;font-size:14px;padding:4px 8px;opacity:0;border-radius:6px;line-height:1}
 .idea:hover .del,.idea .del:focus{opacity:1}
@@ -1113,7 +1122,7 @@ function endDrag(x,y){
 
 /* ================= sheets ================= */
 const sheet = document.getElementById("sheet"), scrim = document.getElementById("scrim");
-let openIso = null, lastFocus = null;
+let openIso = null, lastFocus = null, allOpen = false;
 
 function openSheet(){ sheet.classList.add("on"); scrim.classList.add("on"); sheet.focus(); }
 function closeSheet(){
@@ -1134,12 +1143,23 @@ function openDay(iso){
       + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))+'<br>'+rainLine(w)+'</div></div></div>'
     : '<div class="sh-wx"><div class="meta">Keine Vorhersage für '+esc(wxPlace(iso))+' — außerhalb des 16-Tage-Fensters oder Ort ohne Koordinaten.</div></div>';
   const recs = recsFor(iso);
+  const chip = function(r, plain){
+    return '<button class="rec'+(plain?" plain":"")+'" type="button" data-rec="'+r.i+'" data-iso="'+iso+'">'
+      + '<span class="k">'+kindIcon(r.o.k)+'</span>'+esc(r.o.t)+'</button>';
+  };
   const recBox = recs.length
     ? '<div class="f"><span class="fl">Passt zu diesem Wetter</span><div class="chips">'
-      + recs.map(function(r){
-          return '<button class="rec" type="button" data-rec="'+r.i+'" data-iso="'+iso+'">'
-            + '<span class="k">'+kindIcon(r.o.k)+'</span>'+esc(r.o.t)+'</button>';
-        }).join("") + '</div></div>'
+      + recs.map(function(r){ return chip(r, false); }).join("") + '</div></div>'
+    : "";
+  const shownRec = {};
+  recs.forEach(function(r){ shownRec[r.i] = 1; });
+  const rest = S.ideas.map(function(o,i){ return {o:o, i:i}; })
+                      .filter(function(r){ return !shownRec[r.i]; });
+  const allBox = rest.length
+    ? '<div class="f"><button type="button" class="disclose" id="allIdeas" aria-expanded="'+(allOpen?"true":"false")+'">'
+      + (recs.length ? "Alle Ideen" : "Ideen") + ' <span class="cnt">'+rest.length+'</span> <span class="chev">▾</span></button>'
+      + '<div class="chips" id="allIdeasBox" style="margin-top:12px'+(allOpen?"":";display:none")+'">'
+      + rest.map(function(r){ return chip(r, true); }).join("") + '</div></div>'
     : "";
 
   sheet.innerHTML =
@@ -1171,12 +1191,19 @@ function openDay(iso){
       + '</div></div>'
     + '<p class="hint">Das Wetter folgt dem Ort des Tages — ohne Eintrag gilt der letzte bekannte Ort. Neue Orte werden automatisch geokodiert.</p>'
     + recBox
+    + allBox
     + '<div class="sh-foot"><button class="linkbtn" type="button" id="clearD">Tag leeren</button>'
     + '<button class="linkbtn go" type="button" id="doneD">Fertig</button></div>';
 
   openSheet();
   const refresh = function(reweather){ saved(); render(); if(reweather) loadWeather(); openDay(openIso); };
 
+  const ai = sheet.querySelector("#allIdeas");
+  if(ai) ai.onclick = function(){
+    allOpen = !allOpen;
+    ai.setAttribute("aria-expanded", allOpen ? "true" : "false");
+    sheet.querySelector("#allIdeasBox").style.display = allOpen ? "" : "none";
+  };
   sheet.querySelector("#closeD").onclick = closeSheet;
   sheet.querySelector("#doneD").onclick = closeSheet;
   sheet.querySelector("#prevD").onclick = function(){ if(i>0) openDay(all[i-1]); };

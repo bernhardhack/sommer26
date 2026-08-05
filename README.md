@@ -79,6 +79,7 @@ Two limits worth knowing:
 
 - **Tap a day** — status toggles (Frei / TA / ZA / Büro / Offen), Wo, Weiter nach, Was, and who's there. `‹ ›` or the arrow keys move to the next day without closing.
 - **Drag an idea** by its grip onto any day. Drag the note back out of the day onto the ideas panel to return it. Dragging a note from one day to another moves it.
+- **Assign without dragging.** The day sheet lists the ideas that suit that day's forecast, and *Alle Ideen* expands to the rest. Tap one and it lands on that day. This is the practical route on a phone, where dragging across a 21-row list is awkward.
 - **Each idea carries a weather kind** — ☀ outdoor, ☂ indoor, • any — toggled by clicking the circle. The day sheet then offers the ones that suit that day's forecast under *Passt zu diesem Wetter*; tap one to assign it.
 - **Title, subtitle and ideas** are edited in place — click and type.
 - **Einstellungen** — trip dates, default location, and the people list.
