@@ -5,7 +5,7 @@
   "start": "2026-08-03",
   "end": "2026-08-23",
   "base": "Steyr",
-  "view": "",
+  "view": "week",
   "days": {
     "2026-08-03": {
       "place": "Steyr",
@@ -203,10 +203,6 @@
   },
   "ideas": [
     {
-      "t": "Emma Party",
-      "k": "any"
-    },
-    {
       "t": "Free Tree Open Air, Taiskirchen — 7.–9.8.",
       "k": "out"
     },
@@ -220,8 +216,8 @@
     },
     {
       "t": "Brunnbach — Wasserrad, baden",
-      "k": "out"
+      "k": "any"
     }
   ],
-  "updatedAt": 1785919618785
+  "updatedAt": 1785921314995
 }
