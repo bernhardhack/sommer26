@@ -195,6 +195,42 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
 .rec:hover{border-style:solid;border-color:var(--text)}
 .rec .k{display:inline-flex;opacity:.75}
 .rec.plain{border-style:solid;border-color:var(--line);color:var(--text-2)}
+.ptr{position:fixed;top:0;left:50%;z-index:70;transform:translate(-50%,-46px);opacity:0;
+  background:var(--text);color:#fff;font-size:12px;font-weight:600;padding:8px 16px;
+  border-radius:999px;pointer-events:none;transition:opacity .15s ease;white-space:nowrap;
+  margin-top:calc(8px + env(safe-area-inset-top))}
+.ptr.ready{background:var(--teal)}
+.what .sp{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;opacity:.7}
+.what.cont{opacity:.62}
+.pick{position:relative;display:flex;align-items:stretch;gap:0}
+.pick input[type=text]{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0}
+.pick-btn{flex:0 0 auto;width:42px;background:#fff;border:1px solid var(--line-2);
+  border-top-right-radius:var(--r-sm);border-bottom-right-radius:var(--r-sm);
+  cursor:pointer;color:var(--text-2);font-size:12px;font-family:var(--font)}
+.pick-btn:hover{color:var(--text);border-color:var(--text-3)}
+.pick-list{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:12;background:#fff;
+  border:1px solid var(--line-2);border-radius:var(--r-sm);box-shadow:0 12px 30px rgba(0,0,0,.16);
+  max-height:210px;overflow:auto;padding:5px}
+.pick-opt{display:block;width:100%;text-align:left;font-family:var(--font);font-size:15px;font-weight:500;
+  background:none;border:0;padding:9px 11px;border-radius:8px;cursor:pointer;color:var(--text)}
+.pick-opt:hover{background:#F2F2EE}
+.pick-opt.clear{color:var(--text-2);font-weight:400}
+.items{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.item-row{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--r-sm);padding:9px 10px 9px 13px}
+.item-t{flex:1;min-width:0;font-size:14.5px;font-weight:600;line-height:1.3}
+.item-t small{display:block;font-size:11.5px;font-weight:500;color:var(--text-2);margin-top:2px}
+.span-ctl{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.span-ctl button{width:26px;height:26px;border-radius:50%;border:1px solid var(--line-2);background:#fff;
+  cursor:pointer;color:var(--text-2);font-family:var(--font);font-size:14px;line-height:1;display:grid;place-items:center}
+.span-ctl button:hover{border-color:var(--text);color:var(--text)}
+.span-ctl button[disabled]{opacity:.3;cursor:default}
+.span-ctl .n{font-size:12px;font-weight:700;min-width:46px;text-align:center;color:var(--text-2)}
+.item-del{width:26px;height:26px;border-radius:50%;border:0;background:none;cursor:pointer;
+  color:var(--text-3);font-size:13px;flex:0 0 auto;font-family:var(--font)}
+.item-del:hover{background:rgba(0,0,0,.06);color:var(--coral)}
+.pl-row{display:flex;align-items:center;gap:10px;font-size:14px;padding:5px 0}
+.pl-row .nm{flex:1;min-width:0;font-weight:500}
+.pl-row .co{font-size:11.5px;color:var(--text-3)}
 .rec.plain:hover{border-color:var(--text);color:var(--text)}
 .disclose{display:inline-flex;align-items:center;gap:8px;font-family:var(--font);font-size:13px;font-weight:700;
   letter-spacing:.07em;text-transform:uppercase;color:var(--text-2);background:none;border:0;padding:4px 0;cursor:pointer}
@@ -373,6 +409,7 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
 
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></div>
+<div class="ptr" id="ptr"></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept="application/json" style="display:none">
 
@@ -507,6 +544,7 @@ function b64stdDec(s){
   const bytes = Uint8Array.from(bin, function(c){ return c.charCodeAt(0); });
   return new TextDecoder().decode(bytes);
 }
+function uid(){ return "i"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function normalise(o){
   if(!o.places) o.places = {};
   if(!o.people) o.people = [];
@@ -514,6 +552,17 @@ function normalise(o){
   o.ideas = o.ideas.map(function(x){
     return (typeof x === "string") ? {t:x, k:"any"} : {t:(x && x.t) || "", k:(x && x.k) || "any"};
   }).filter(function(x){ return x.t; });
+  if(!o.days) o.days = {};
+  Object.keys(o.days).forEach(function(k){
+    const d = o.days[k];
+    if(!d.items && d.what){
+      d.items = String(d.what).split(" · ").map(function(t){
+        return {id:uid(), t:t.trim(), k:"any"};
+      }).filter(function(z){ return z.t; });
+    }
+    delete d.what;
+    if(d.items && !d.items.length) delete d.items;
+  });
   return o;
 }
 
@@ -592,7 +641,19 @@ async function pushRemote(){
   if(!sync.token) return;
   setSync("saving");
   try{
-    if(remoteSha === null){ try{ await pullRemote(); }catch(e){} }
+    /* Re-read immediately before writing. A cached sha goes stale the
+       moment the other device pushes, and GitHub then rejects the write —
+       which used to fail silently and strand the change on this device. */
+    let remote = null;
+    try{ remote = await pullRemote(); }catch(e){ remoteSha = null; }
+
+    if(remote){
+      const rs = sigOf(remote), ls = sigOf(S), bs = S.baseSig;
+      if(rs === ls){ S.baseSig = rs; writeLocal(); setSync("ok"); return; }
+      if(bs && rs !== bs){        // the other device moved too
+        setSync("ok"); offerRemote(remote); return;
+      }
+    }
     const body = {
       message: "Update plan — " + new Date().toISOString().slice(0,16).replace("T"," "),
       content: b64std(JSON.stringify(S, null, 2)),
@@ -747,6 +808,44 @@ function wxPlace(iso){
   if(x.place) return x.place;
   return wxPrev(iso);
 }
+function itemsOf(iso){ return get(iso).items || []; }
+function setItems(iso, arr){ set(iso, {items: arr.slice()}); }
+function itemDays(id){
+  return dateList().filter(function(iso){
+    return itemsOf(iso).some(function(z){ return z.id === id; });
+  });
+}
+function findItem(id){
+  const d = itemDays(id)[0];
+  if(!d) return null;
+  return itemsOf(d).filter(function(z){ return z.id === id; })[0];
+}
+function addItem(iso, obj, span){
+  const it = {id: obj.id || uid(), t: obj.t, k: obj.k || "any"};
+  const all = dateList(), start = all.indexOf(iso);
+  if(start < 0) return null;
+  const n = Math.max(1, Math.min(span || 1, all.length - start));
+  for(let k = 0; k < n; k++){
+    const d = all[start + k], arr = itemsOf(d).slice();
+    if(!arr.some(function(z){ return z.id === it.id; })) arr.push(Object.assign({}, it));
+    setItems(d, arr);
+  }
+  return it.id;
+}
+function removeItem(id){
+  dateList().forEach(function(iso){
+    const cur = itemsOf(iso);
+    const arr = cur.filter(function(z){ return z.id !== id; });
+    if(arr.length !== cur.length) setItems(iso, arr);
+  });
+}
+function setSpan(id, n){
+  const it = findItem(id), start = itemDays(id)[0];
+  if(!it || !start) return;
+  removeItem(id);
+  addItem(start, it, n);
+}
+
 function blocks(){
   const out = []; let cur = null;
   dateList().forEach(function(iso){
@@ -887,9 +986,17 @@ function placeCell(iso){
   return '<span class="place implied">'+esc(wxPlace(iso))+'</span>';
 }
 function whatCell(iso){
-  const x = get(iso);
-  if(!x.what) return "";
-  return '<span class="what draggable" data-drag="what" data-iso="'+iso+'" title="Zurück in die Ideen ziehen">'+esc(x.what)+'</span>';
+  const arr = itemsOf(iso);
+  if(!arr.length) return "";
+  const all = dateList(), i = all.indexOf(iso);
+  const prev = i > 0 ? itemsOf(all[i-1]) : [];
+  return arr.map(function(it){
+    const days = itemDays(it.id), sp = days.length;
+    const cont = prev.some(function(z){ return z.id === it.id; });
+    const badge = sp > 1 ? '<span class="sp">'+(days.indexOf(iso)+1)+'/'+sp+'</span>' : '';
+    return '<span class="what draggable'+(cont ? " cont" : "")+'" data-drag="item" data-id="'+it.id+'" data-iso="'+iso+'"'
+      + ' title="Ziehen zum Verschieben oder zurück in die Ideen">'+esc(it.t)+badge+'</span>';
+  }).join("");
 }
 function tagsHTML(iso){
   const x = get(iso); let h = "";
@@ -1028,7 +1135,7 @@ function renderIdeas(){
 /* which of your own ideas suit this day's weather */
 function recsFor(iso){
   const w = wxFor(iso);
-  if(!w || get(iso).what) return [];
+  if(!w) return [];
   const wet = isWet(w);
   return S.ideas.map(function(o,i){ return {o:o, i:i}; })
     .filter(function(r){ return r.o.k === "any" || (wet ? r.o.k === "in" : r.o.k === "out"); })
@@ -1056,7 +1163,15 @@ document.addEventListener("pointerdown", function(e){
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
     window.removeEventListener("pointercancel", up);
-    if(live){ blockClick = true; endDrag(ev.clientX, ev.clientY); }
+    if(live){
+      /* Suppress the click the browser fires after a drag — but only
+         briefly. If no click follows (drop landed on a different
+         element than the press), a sticky flag would eat the next
+         real tap. */
+      blockClick = true;
+      setTimeout(function(){ blockClick = false; }, 300);
+      endDrag(ev.clientX, ev.clientY);
+    }
   }
   window.addEventListener("pointermove", move, {passive:false});
   window.addEventListener("pointerup", up);
@@ -1065,9 +1180,10 @@ document.addEventListener("pointerdown", function(e){
 
 function beginDrag(h){
   const type = h.dataset.drag;
-  const text = type==="idea" ? S.ideas[+h.dataset.i].t : get(h.dataset.iso).what;
-  const kind = type==="idea" ? S.ideas[+h.dataset.i].k : "any";
-  dragging = {type:type, text:text, kind:kind, i:h.dataset.i, iso:h.dataset.iso};
+  let text, kind;
+  if(type === "idea"){ text = S.ideas[+h.dataset.i].t; kind = S.ideas[+h.dataset.i].k; }
+  else { const it = findItem(h.dataset.id); text = it ? it.t : ""; kind = it ? it.k : "any"; }
+  dragging = {type:type, text:text, kind:kind, i:h.dataset.i, iso:h.dataset.iso, id:h.dataset.id};
   ghost = document.createElement("div");
   ghost.className = "ghost";
   ghost.textContent = text || "";
@@ -1095,9 +1211,10 @@ function endDrag(x,y){
   if(!d || !target) return;
 
   if(target.id === "ideasPanel"){
-    if(d.type === "what"){
-      S.ideas.push({t:d.text, k:"any"});
-      set(d.iso, {what:""});
+    if(d.type === "item"){
+      const it = findItem(d.id);
+      S.ideas.push({t:d.text, k:(it && it.k) || "any"});
+      removeItem(d.id);
       saved("Zurück in den Ideen");
       render();
     }
@@ -1106,15 +1223,17 @@ function endDrag(x,y){
   const iso = target.dataset.iso;
   if(!iso) return;
   if(d.type === "idea"){
-    const cur = get(iso).what;
-    set(iso, {what: cur ? cur+" · "+d.text : d.text});
+    addItem(iso, {t:d.text, k:d.kind}, 1);
     S.ideas.splice(+d.i, 1);
     saved(dayNum(iso)+"."+(monOf(iso)+1)+". · "+d.text);
     render();
-  } else if(d.type === "what" && iso !== d.iso){
-    const cur = get(iso).what;
-    set(iso, {what: cur ? cur+" · "+d.text : d.text});
-    set(d.iso, {what:""});
+  } else if(d.type === "item"){
+    const it = findItem(d.id);
+    if(!it) return;
+    const span = itemDays(d.id).length;
+    if(itemDays(d.id)[0] === iso) return;
+    removeItem(d.id);
+    addItem(iso, it, span);
     saved("Verschoben auf "+dayNum(iso)+".");
     render();
   }
@@ -1137,10 +1256,42 @@ function openDay(iso){
   openIso = iso;
   const x = get(iso), w = wxFor(iso), b = blockOf(iso), i = all.indexOf(iso);
   const blockLen = b ? diffD(b.from,b.to)+1 : 0;
-  const known = Object.keys(S.places).map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
+  const knownPlaces = Object.keys(S.places).sort(function(a,b){ return a.localeCompare(b,"de"); });
+  const picker = function(id, label, val, ph){
+    return '<div class="f"><label for="'+id+'">'+label+'</label><div class="pick">'
+      + '<input type="text" id="'+id+'" value="'+esc(val)+'" placeholder="'+esc(ph)+'" autocomplete="off">'
+      + '<button type="button" class="pick-btn" data-pick="'+id+'" aria-label="Ort wählen">▾</button>'
+      + '<div class="pick-list" data-list="'+id+'" hidden>'
+      + '<button type="button" class="pick-opt clear" data-for="'+id+'" data-val="">— leer —</button>'
+      + knownPlaces.map(function(n){
+          return '<button type="button" class="pick-opt" data-for="'+id+'" data-val="'+esc(n)+'">'+esc(n)+'</button>';
+        }).join("")
+      + '</div></div></div>';
+  };
+  const itemList = function(d){
+    const arr = itemsOf(d);
+    if(!arr.length) return "";
+    return '<div class="items">' + arr.map(function(it){
+      const days = itemDays(it.id), sp = days.length, pos = days.indexOf(d) + 1;
+      const maxLeft = dateList().length - dateList().indexOf(days[0]);
+      return '<div class="item-row">'
+        + '<span class="item-t">'+esc(it.t)
+        + (sp > 1 ? '<small>'+dayNum(days[0])+'.–'+dayNum(days[sp-1])+'. · Tag '+pos+' von '+sp+'</small>' : '')
+        + '</span>'
+        + '<span class="span-ctl">'
+        + '<button type="button" data-spandn="'+it.id+'"'+(sp<=1?" disabled":"")+' aria-label="Kürzer">−</button>'
+        + '<span class="n">'+sp+(sp===1?" Tag":" Tage")+'</span>'
+        + '<button type="button" data-spanup="'+it.id+'"'+(sp>=maxLeft?" disabled":"")+' aria-label="Länger">+</button>'
+        + '</span>'
+        + '<button type="button" class="item-del" data-itemdel="'+it.id+'" aria-label="Entfernen">✕</button>'
+        + '</div>';
+    }).join("") + '</div>';
+  };
   const wxBox = w
     ? '<div class="sh-wx">'+wxIcon(wxKind(w.c),40)+'<div><div class="big">'+w.max+'° <span style="font-size:15px;color:var(--text-2);font-weight:600">/ '+w.min+'°</span> '+rainChip(w,true)+'</div>'
-      + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))+'<br>'+rainLine(w)+'</div></div></div>'
+      + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))
+      + (x.to ? ' <span style="color:var(--text-3)">(Ziel)</span>' : '')
+      + '<br>'+rainLine(w)+'</div></div></div>'
     : '<div class="sh-wx"><div class="meta">Keine Vorhersage für '+esc(wxPlace(iso))+' — außerhalb des 16-Tage-Fensters oder Ort ohne Koordinaten.</div></div>';
   const recs = recsFor(iso);
   const chip = function(r, plain){
@@ -1178,10 +1329,10 @@ function openDay(iso){
       + '<button class="chip" type="button" data-m="Büro" aria-pressed="'+(x.mode==="Büro")+'">Büro</button>'
       + '<button class="chip" type="button" data-t="offen" aria-pressed="'+(!!x.offen)+'">Offen</button></div></div>'
     + '<div class="f2">'
-      + '<div class="f"><label for="fPlace">Wo</label><input type="text" id="fPlace" list="placeList" value="'+esc(x.place||"")+'" placeholder="'+esc(wxPlace(iso))+'"></div>'
-      + '<div class="f"><label for="fTo">Weiter nach</label><input type="text" id="fTo" list="placeList" value="'+esc(x.to||"")+'" placeholder="—"></div></div>'
-    + '<datalist id="placeList">'+known+'</datalist>'
-    + '<div class="f"><label for="fWhat">Was</label><input type="text" id="fWhat" value="'+esc(x.what||"")+'" placeholder="Plan, Termin, Notiz"></div>'
+      + picker("fPlace", "Wo", x.place||"", wxPlace(iso))
+      + picker("fTo", "Weiter nach", x.to||"", "—") + '</div>'
+    + '<div class="f"><span class="fl">Was</span>'+itemList(iso)
+      + '<input type="text" id="fWhat" value="" placeholder="Eintrag hinzufügen und Enter"></div>'
     + '<div class="f"><span class="fl">Wer</span><div class="chips">'
       + S.people.map(function(p){
           return '<button class="chip" type="button" data-who="'+esc(p.id)+'" aria-pressed="'+((x.who||[]).indexOf(p.id)>=0)+'">'
@@ -1229,7 +1380,54 @@ function openDay(iso){
   };
   bindText("#fPlace","place",true);
   bindText("#fTo","to",true);
-  bindText("#fWhat","what",false);
+
+  const wi = sheet.querySelector("#fWhat");
+  wi.onkeydown = function(e){
+    if(e.key !== "Enter") return;
+    e.preventDefault();
+    const t = wi.value.trim();
+    if(!t) return;
+    addItem(iso, {t:t, k:"any"}, 1);
+    wi.value = "";
+    saved(); render(); openDay(iso);
+  };
+
+  sheet.querySelectorAll("[data-pick]").forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      const box = sheet.querySelector('[data-list="'+btn.dataset.pick+'"]');
+      const wasHidden = box.hidden;
+      sheet.querySelectorAll(".pick-list").forEach(function(l){ l.hidden = true; });
+      box.hidden = !wasHidden;
+    };
+  });
+  sheet.querySelectorAll(".pick-opt").forEach(function(opt){
+    opt.onclick = function(){
+      const el = sheet.querySelector("#"+opt.dataset.for);
+      el.value = opt.dataset.val;
+      sheet.querySelectorAll(".pick-list").forEach(function(l){ l.hidden = true; });
+      el.onchange();
+    };
+  });
+  sheet.addEventListener("click", function(e){
+    if(!e.target.closest(".pick")) sheet.querySelectorAll(".pick-list").forEach(function(l){ l.hidden = true; });
+  });
+
+  sheet.querySelectorAll("[data-itemdel]").forEach(function(b2){
+    b2.onclick = function(){ removeItem(b2.dataset.itemdel); saved("Entfernt"); render(); openDay(iso); };
+  });
+  sheet.querySelectorAll("[data-spanup]").forEach(function(b2){
+    b2.onclick = function(){ const id = b2.dataset.spanup; setSpan(id, itemDays(id).length + 1); saved(); render(); openDay(iso); };
+  });
+  sheet.querySelectorAll("[data-spandn]").forEach(function(b2){
+    b2.onclick = function(){
+      const id = b2.dataset.spandn, n = itemDays(id).length - 1;
+      if(n < 1) return;
+      const stays = itemDays(id).slice(0, n).indexOf(iso) >= 0;
+      setSpan(id, n); saved(); render();
+      openDay(stays ? iso : itemDays(id)[0] || iso);
+    };
+  });
 }
 
 function toggleWho(iso, id){
@@ -1269,6 +1467,16 @@ function openSettings(){
           + '<button class="linkbtn" type="button" data-pd="'+i+'">Entfernen</button></div>';
       }).join("")
     + '</div><button class="addbtn" type="button" id="addPerson">+ Person hinzufügen</button></div>'
+    + '<div class="f"><span class="fl">Orte</span><div>'
+    + (Object.keys(S.places).length
+        ? Object.keys(S.places).sort(function(a,b){ return a.localeCompare(b,"de"); }).map(function(n){
+            const p2 = S.places[n];
+            return '<div class="pl-row"><span class="nm">'+esc(n)+'</span>'
+              + '<span class="co">'+p2.lat.toFixed(2)+', '+p2.lon.toFixed(2)+'</span>'
+              + '<button class="item-del" type="button" data-pldel="'+esc(n)+'" aria-label="Entfernen">✕</button></div>';
+          }).join("")
+        : '<p class="hint">Noch keine Orte.</p>')
+    + '</div><p class="hint" style="margin-top:10px">Orte landen hier automatisch: sobald du einen Namen bei <b>Wo</b> oder <b>Weiter nach</b> einträgst, wird er geokodiert und steht danach im Dropdown. Entfernen löscht nur die Koordinaten — steht der Name noch an einem Tag, wird er beim nächsten Laden neu gesucht.</p></div>'
     + '<div class="f"><label for="sTok">Sync-Token (nur auf deinen Geräten)</label>'
     + '<input type="password" id="sTok" value="'+esc(sync.token)+'" placeholder="github_pat_… — leer lassen zum Mitlesen" autocomplete="off"></div>'
     + '<div class="f"><span class="fl">Sync</span><div class="chips">'
@@ -1310,6 +1518,9 @@ function openSettings(){
     };
   });
   sheet.querySelector("#addPerson").onclick = function(){ if(addPerson()){ saved(); render(); openSettings(); } };
+  sheet.querySelectorAll("[data-pldel]").forEach(function(el){
+    el.onclick = function(){ delete S.places[el.dataset.pldel]; saved("Ort entfernt"); render(); openSettings(); };
+  });
   sheet.querySelector("#sTok").onchange = function(e){
     sync.token = e.target.value.trim(); saveSync(); remoteSha = null;
     setSync(sync.token ? "idle" : "reader");
@@ -1392,8 +1603,8 @@ document.addEventListener("click", function(e){
   }
   const rc = e.target.closest("[data-rec]");
   if(rc){
-    const i = +rc.dataset.rec, iso = rc.dataset.iso, cur = get(iso).what;
-    set(iso, {what: cur ? cur+" · "+S.ideas[i].t : S.ideas[i].t});
+    const i = +rc.dataset.rec, iso = rc.dataset.iso, o = S.ideas[i];
+    addItem(iso, {t:o.t, k:o.k}, 1);
     S.ideas.splice(i,1);
     saved(); render(); openDay(iso); return;
   }
@@ -1424,9 +1635,48 @@ document.getElementById("ideas").addEventListener("blur", function(e){
 });
 
 document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState === "visible" && Date.now() - lastSyncAt > 10000) initialSync();
+  if(document.visibilityState === "visible" && Date.now() - lastSyncAt > 5000) initialSync();
+});
+window.addEventListener("focus", function(){
+  if(Date.now() - lastSyncAt > 5000) initialSync();
 });
 window.addEventListener("online", function(){ initialSync(); });
+setInterval(function(){
+  if(document.visibilityState === "visible" && Date.now() - lastSyncAt > 45000) initialSync();
+}, 20000);
+document.getElementById("syncNote").addEventListener("click", function(){
+  toast("Aktualisiere…"); initialSync();
+});
+
+/* pull down at the top of the page to force a sync */
+(function(){
+  const ind = document.getElementById("ptr");
+  let startY = null, dist = 0;
+  function setPtr(d){
+    dist = d;
+    ind.style.transform = "translateY("+(d ? Math.min(d, 90) - 46 : -46)+"px)";
+    ind.style.opacity = d > 8 ? "1" : "0";
+    ind.classList.toggle("ready", d >= 60);
+    ind.textContent = d >= 60 ? "Loslassen zum Aktualisieren" : "Zum Aktualisieren ziehen";
+  }
+  window.addEventListener("touchstart", function(e){
+    if(window.scrollY > 0 || e.touches.length !== 1 ||
+       e.target.closest("[data-drag], .sheet, .scrim.on")){ startY = null; return; }
+    startY = e.touches[0].clientY;
+  }, {passive:true});
+  window.addEventListener("touchmove", function(e){
+    if(startY === null) return;
+    const d = e.touches[0].clientY - startY;
+    setPtr(d > 0 ? d : 0);
+  }, {passive:true});
+  window.addEventListener("touchend", function(){
+    if(startY === null) return;
+    const fire = dist >= 60;
+    setPtr(0); startY = null;
+    if(fire){ toast("Aktualisiere…"); initialSync(); }
+  }, {passive:true});
+  setPtr(0);
+})();
 
 checkSeedVersion();
 lastSig = sigOf(S);
