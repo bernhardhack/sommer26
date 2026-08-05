@@ -169,9 +169,10 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .rw-wx{position:relative;z-index:1;min-width:0}
 .rw-wx .wx{flex-wrap:nowrap;white-space:nowrap}
 
-#cal{display:none}#list{display:none}
+#cal{display:none}#list{display:none}#places{display:none}
 body.view-week #cal{display:block}
 body.view-list #list{display:block}
+body.view-places #places{display:block}
 
 /* ---------- ideas / legend ---------- */
 .cols{display:grid;grid-template-columns:1.15fr 1fr;gap:40px;margin-top:52px;border-top:1px solid var(--line);padding-top:32px}
@@ -229,6 +230,42 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   color:var(--text-3);font-size:13px;flex:0 0 auto;font-family:var(--font)}
 .item-del:hover{background:rgba(0,0,0,.06);color:var(--coral)}
 .pl-row{display:flex;align-items:center;gap:10px;font-size:14px;padding:5px 0}
+.pinbtn{width:28px;height:28px;border-radius:50%;border:1px solid var(--line-2);background:#fff;cursor:pointer;
+  color:var(--text-3);display:grid;place-items:center;flex:0 0 auto;padding:0}
+.pinbtn:hover{border-color:var(--text-3);color:var(--text-2)}
+.pinbtn.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.wxgrid{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+table.wxt{border-collapse:separate;border-spacing:4px;font-family:var(--font)}
+.wxt th{font-weight:600;padding:0}
+.wxt th.dh{min-width:60px;text-align:center;padding:2px 0 8px}
+.wxt th.dh .dw{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.wxt th.dh .dn{display:block;font-size:17px;font-weight:800;letter-spacing:-.02em}
+.wxt th.dh.today .dn{color:var(--coral)}
+.wxt th.ph{position:sticky;left:0;z-index:2;background:var(--bg);text-align:left;
+  padding-right:14px;white-space:nowrap;vertical-align:middle}
+.wxt th.ph .phi{display:flex;align-items:center;gap:9px}
+.wxt th.ph .pn{font-size:14px;font-weight:600}
+.wxt thead th.ph{min-width:150px}
+.wxt td.wc{min-width:60px;text-align:center;background:#fff;border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:8px 4px 7px;vertical-align:middle}
+.wxt td.wc svg{display:block;margin:0 auto 2px}
+.wxt td.wc .ct{display:block;font-size:14px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.wxt td.wc .cr{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:999px}
+.wxt td.wc .cr.lo{background:#F0F0EC;color:var(--text-2)}
+.wxt td.wc .cr.mid{background:#DFEDEB;color:var(--teal)}
+.wxt td.wc .cr.hi{background:var(--teal);color:#fff}
+.wxt td.wc.here{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.wxt td.wc.dim{opacity:.34}
+.wxt td.wc.today{background:#FFF7F7}
+.wxt td.wc.empty{color:var(--text-3);background:transparent;border-style:dashed}
+@media (max-width:720px){
+  .wxt th.ph{min-width:0;padding-right:8px}
+  .wxt thead th.ph{min-width:108px}
+  .wxt th.ph .pn{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:74px}
+  .wxt th.dh{min-width:52px}
+  .wxt td.wc{min-width:52px;padding:6px 2px}
+  .pinbtn{width:24px;height:24px}
+}
 .pl-row .nm{flex:1;min-width:0;font-weight:500}
 .pl-row .co{font-size:11.5px;color:var(--text-3)}
 .rec.plain:hover{border-color:var(--text);color:var(--text)}
@@ -371,6 +408,7 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
         <div class="seg" role="group" aria-label="Ansicht">
           <button id="btnWeek" aria-pressed="true">Wochen</button>
           <button id="btnList" aria-pressed="false">Liste</button>
+          <button id="btnPlaces" aria-pressed="false">Orte</button>
         </div>
         <button class="pill" id="btnSettings">Einstellungen</button>
       </div>
@@ -385,6 +423,7 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
       <div id="weeks"></div>
     </section>
     <section id="list" aria-label="Tagesliste"></section>
+    <section id="places" aria-label="Wetter nach Orten"></section>
 
     <div class="cols">
       <section>
@@ -508,7 +547,7 @@ function saved(msg){ save(); toast(msg || (canPersist ? "Gespeichert" : "Nur in 
 /* A signature of the plan's actual content. Device-local things — the
    view toggle, timestamps, the sync baseline — are deliberately out, so
    opening a day or switching views is not mistaken for an edit. */
-const SIG_KEYS = ["title","subtitle","start","end","base","days","people","places","ideas"];
+const SIG_KEYS = ["title","subtitle","start","end","base","days","people","places","ideas","pins"];
 function stable(v){
   if(Array.isArray(v)) return "["+v.map(stable).join(",")+"]";
   if(v && typeof v === "object"){
@@ -552,6 +591,10 @@ function normalise(o){
   o.ideas = o.ideas.map(function(x){
     return (typeof x === "string") ? {t:x, k:"any"} : {t:(x && x.t) || "", k:(x && x.k) || "any"};
   }).filter(function(x){ return x.t; });
+  if(!Array.isArray(o.pins)){
+    o.pins = ["Steyr","Brunnbach","Wien","Graz"].filter(function(n){ return o.places[n]; });
+  }
+  o.pins = o.pins.filter(function(n){ return o.places[n]; });
   if(!o.days) o.days = {};
   Object.keys(o.days).forEach(function(k){
     const d = o.days[k];
@@ -888,9 +931,15 @@ function wxIcon(kind,size){
 const weather = {};
 let wxErr = "";
 
-function usedPlaces(){
+function planPlaces(){
   const s = {};
   dateList().forEach(function(iso){ const n = wxPlace(iso); if(n && S.places[n]) s[n] = 1; });
+  return Object.keys(s);
+}
+function usedPlaces(){
+  const s = {};
+  planPlaces().forEach(function(n){ s[n] = 1; });
+  (S.pins || []).forEach(function(n){ if(S.places[n]) s[n] = 1; });
   return Object.keys(s);
 }
 function missingPlaces(){
@@ -1064,7 +1113,7 @@ function render(){
     ? a.getUTCDate()+".–"+b.getUTCDate()+". "+MON[monOf(S.end)]+" "+b.getUTCFullYear()
     : a.getUTCDate()+". "+MON[monOf(S.start)]+" – "+b.getUTCDate()+". "+MON[monOf(S.end)]+" "+b.getUTCFullYear();
   document.getElementById("footL").textContent = S.title;
-  renderWeeks(); renderList(); renderLegend(); renderIdeas();
+  renderWeeks(); renderList(); renderCompare(); renderLegend(); renderIdeas();
 }
 function dayLabel(iso, all){
   const first = iso===all[0] || dayNum(iso)===1;
@@ -1105,6 +1154,56 @@ function renderList(){
       + '<span class="rw-tags">'+tagsHTML(iso)+whoHTML(iso)+'</span></button>';
   }).join("");
 }
+/* rows: pinned places first, then anywhere the plan actually takes you */
+function compareRows(){
+  const pins = (S.pins || []).filter(function(n){ return S.places[n]; });
+  const plan = planPlaces().filter(function(n){ return pins.indexOf(n) < 0; });
+  return pins.map(function(n){ return {n:n, pin:true}; })
+    .concat(plan.sort().map(function(n){ return {n:n, pin:false}; }));
+}
+function compareDays(){
+  const win = wxWindow();
+  if(!win) return [];
+  return dateList().filter(function(iso){ return iso >= win.start && iso <= win.end; });
+}
+function renderCompare(){
+  const rows = compareRows(), days = compareDays();
+  const el = document.getElementById("places");
+  if(!rows.length || !days.length){
+    el.innerHTML = '<p class="hint">Noch keine Vorhersage. Orte anheften unter Einstellungen → Orte.</p>';
+    return;
+  }
+  let h = '<div class="wxgrid"><table class="wxt"><thead><tr><th class="ph"></th>';
+  days.forEach(function(iso){
+    h += '<th class="dh'+(iso===TODAY?" today":"")+'"><span class="dw">'+DOW[dowOf(iso)]+'</span>'
+       + '<span class="dn">'+dayNum(iso)+'</span></th>';
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    h += '<tr><th class="ph"><span class="phi">'
+       + '<button type="button" class="pinbtn'+(r.pin?" on":"")+'" data-pin="'+esc(r.n)+'"'
+       + ' title="'+(r.pin?"Nicht mehr anheften":"Anheften")+'" aria-label="'+(r.pin?"Nicht mehr anheften":"Anheften")+'">'
+       + pinIcon() + '</button><span class="pn">'+esc(r.n)+'</span></span></th>';
+    days.forEach(function(iso){
+      const b = weather[r.n], w = b ? b[iso] : null;
+      const here = wxPlace(iso) === r.n;
+      const dim  = !r.pin && !here;
+      if(!w){ h += '<td class="wc empty">·</td>'; return; }
+      const pp = w.pp || 0;
+      const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
+      h += '<td class="wc'+(here?" here":"")+(dim?" dim":"")+(iso===TODAY?" today":"")+'"'
+         + ' title="'+esc(r.n)+' · '+WXL[wxKind(w.c)]+' · '+pp+'%">'
+         + wxIcon(wxKind(w.c), 20)
+         + '<span class="ct">'+w.max+'°</span>'
+         + '<span class="cr '+lvl+'">'+pp+'</span></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>'
+     + '<p class="hint" style="margin-top:14px">Umrandet = dein geplanter Ort an diesem Tag. Die Zahl unter der Temperatur ist die Regenwahrscheinlichkeit in Prozent. Über die Nadel heftest du einen Ort dauerhaft an; nicht angeheftete Orte sind an Tagen, an denen du nicht dort bist, gedämpft.</p>';
+  el.innerHTML = h;
+}
+
 function renderLegend(){
   document.getElementById("legWork").innerHTML =
     '<span class="leg-item"><span class="tag ta">TA</span> Telearbeit</span>'+
@@ -1115,6 +1214,11 @@ function renderLegend(){
   document.getElementById("legPeople").innerHTML = S.people.map(function(p){
     return '<span class="leg-item"><span class="p" style="background:'+esc(p.c)+'">'+esc(p.id[0])+'</span> '+esc(p.name)+'</span>';
   }).join("");
+}
+function pinIcon(){
+  return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+    + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M9 3h6l-1 6 3.5 3.5V15H6.5v-2.5L10 9z"/><path d="M12 15v6"/></svg>';
 }
 function kindIcon(k){
   const o = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
@@ -1471,12 +1575,15 @@ function openSettings(){
     + (Object.keys(S.places).length
         ? Object.keys(S.places).sort(function(a,b){ return a.localeCompare(b,"de"); }).map(function(n){
             const p2 = S.places[n];
-            return '<div class="pl-row"><span class="nm">'+esc(n)+'</span>'
+            const on = (S.pins||[]).indexOf(n) >= 0;
+            return '<div class="pl-row">'
+              + '<button type="button" class="pinbtn'+(on?" on":"")+'" data-pin="'+esc(n)+'" aria-label="Anheften">'+pinIcon()+'</button>'
+              + '<span class="nm">'+esc(n)+'</span>'
               + '<span class="co">'+p2.lat.toFixed(2)+', '+p2.lon.toFixed(2)+'</span>'
               + '<button class="item-del" type="button" data-pldel="'+esc(n)+'" aria-label="Entfernen">✕</button></div>';
           }).join("")
         : '<p class="hint">Noch keine Orte.</p>')
-    + '</div><p class="hint" style="margin-top:10px">Orte landen hier automatisch: sobald du einen Namen bei <b>Wo</b> oder <b>Weiter nach</b> einträgst, wird er geokodiert und steht danach im Dropdown. Entfernen löscht nur die Koordinaten — steht der Name noch an einem Tag, wird er beim nächsten Laden neu gesucht.</p></div>'
+    + '</div><p class="hint" style="margin-top:10px">Angeheftete Orte stehen immer im Vergleich unter <b>Orte</b>, auch wenn du gar nicht hinfährst. Orte landen hier automatisch: sobald du einen Namen bei <b>Wo</b> oder <b>Weiter nach</b> einträgst, wird er geokodiert und steht danach im Dropdown. Entfernen löscht nur die Koordinaten — steht der Name noch an einem Tag, wird er beim nächsten Laden neu gesucht.</p></div>'
     + '<div class="f"><label for="sTok">Sync-Token (nur auf deinen Geräten)</label>'
     + '<input type="password" id="sTok" value="'+esc(sync.token)+'" placeholder="github_pat_… — leer lassen zum Mitlesen" autocomplete="off"></div>'
     + '<div class="f"><span class="fl">Sync</span><div class="chips">'
@@ -1577,11 +1684,14 @@ function applyView(){
   const v = S.view || (window.innerWidth <= 720 ? "list" : "week");
   document.body.classList.toggle("view-week", v==="week");
   document.body.classList.toggle("view-list", v==="list");
+  document.body.classList.toggle("view-places", v==="places");
   document.getElementById("btnWeek").setAttribute("aria-pressed", v==="week");
   document.getElementById("btnList").setAttribute("aria-pressed", v==="list");
+  document.getElementById("btnPlaces").setAttribute("aria-pressed", v==="places");
 }
 document.getElementById("btnWeek").onclick = function(){ S.view = "week"; save(); applyView(); };
 document.getElementById("btnList").onclick = function(){ S.view = "list"; save(); applyView(); };
+document.getElementById("btnPlaces").onclick = function(){ S.view = "places"; save(); applyView(); };
 document.getElementById("btnSettings").onclick = openSettings;
 scrim.onclick = closeSheet;
 
@@ -1595,6 +1705,15 @@ document.addEventListener("keydown", function(e){
 });
 document.addEventListener("click", function(e){
   if(blockClick){ blockClick = false; e.preventDefault(); e.stopPropagation(); return; }
+  const pb = e.target.closest("[data-pin]");
+  if(pb){
+    const n = pb.dataset.pin;
+    S.pins = S.pins || [];
+    const at = S.pins.indexOf(n);
+    if(at >= 0) S.pins.splice(at,1); else S.pins.push(n);
+    saved(at >= 0 ? n+" gelöst" : n+" angeheftet");
+    render(); loadWeather(); return;
+  }
   const kk = e.target.closest("[data-kind]");
   if(kk){
     const i = +kk.dataset.kind, order = ["any","out","in"];
