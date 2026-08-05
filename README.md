@@ -71,6 +71,7 @@ For several people editing at once you'd still want real merging. This resolves 
 
 Two limits worth knowing:
 
+- **Past about a week the forecast fades.** The 1–2 km regional models only run a few days out; beyond that the numbers come from a global model at 11–25 km. Those days render at lower contrast, with a dashed divider in **Orte** marking where it changes. Same data, weaker claim — the interface should not present day 12 with the confidence of day 2.
 - The forecast reaches **16 days out**. Days beyond that show `—` and fill in as they come into range.
 - Each day shows **rain probability** as a coloured chip with a three-bar duration meter: one bar under 2 hours, two up to 6, three beyond. Probability tells you whether it rains; the bars tell you whether it rains all day. 90 % for one hour and 90 % for nine look nothing alike.
 - The chip colour is a verdict, not a restatement of the number: grey under 25 %, mint to 60 %, solid teal for a day worth staying in. A near-certain but brief shower stays mint — high odds of getting wet for twenty minutes is not an indoor day.

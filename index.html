@@ -129,7 +129,9 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .mtr{display:inline-flex;align-items:flex-end;gap:1.5px;margin-left:5px;vertical-align:-1px}
 .mtr i{width:3px;height:8px;border-radius:1px;background:currentColor;opacity:.26}
 .mtr i.on{opacity:1}
+.wx.soft{opacity:.5}
 .wx.empty{opacity:.4}
+.tmark{color:var(--text-3);font-style:italic}
 .wx.empty .t{color:var(--text-3);font-weight:500;font-size:13px}
 
 .d-body{display:flex;flex-direction:column;gap:7px;position:relative;z-index:1;margin-top:auto;min-width:0}
@@ -260,7 +262,12 @@ table.wxt{border-collapse:separate;border-spacing:4px;font-family:var(--font)}
 .wxt td.wc .cr.mid{background:#DFEDEB;color:var(--teal)}
 .wxt td.wc .cr.hi{background:var(--teal);color:#fff}
 .wxt td.wc.here{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
+.wxt td.wc.soft{opacity:.5}
+.wxt td.wc.soft.here{opacity:.72}
 .wxt td.wc.dim{opacity:.34}
+.wxt th.dh.trend{opacity:.55}
+.wxt th.dh.edge,.wxt td.wc.edge{border-left:1px dashed var(--line-2)}
+.wxt td.wc.edge{border-left-color:var(--line-2)}
 .wxt td.wc.today{background:#FFF7F7}
 .wxt td.wc.empty{color:var(--text-3);background:transparent;border-style:dashed}
 @media (max-width:720px){
@@ -1120,7 +1127,9 @@ function rainChip(w, full){
 function wxHTML(iso, full){
   const w = wxFor(iso);
   if(!w) return '<span class="wx empty"><span class="t">—</span></span>';
-  return '<span class="wx">'+wxIcon(wxKind(w.c))+'<span class="t">'+w.max+'°</span>'
+  return '<span class="wx'+(isTrend(iso) ? " soft" : "")+'"'
+    + (isTrend(iso) ? ' title="Mehr als eine Woche voraus — Tendenz"' : '') + '>'
+    + wxIcon(wxKind(w.c))+'<span class="t">'+w.max+'°</span>'
     + '<span class="tmin">'+w.min+'°</span>'+rainChip(w, full)+'</span>';
 }
 function rainLine(w){
@@ -1140,6 +1149,11 @@ function hlCls(iso, weekAware){
   return c;
 }
 const isPast = iso => iso < TODAY;
+/* Beyond about a week the regional models have run out and the numbers
+   come from a global model at 11-25 km. Same data, different kind of
+   claim — so it should not be rendered with the same confidence. */
+const TREND_AFTER = 7;
+function isTrend(iso){ return diffD(TODAY, iso) > TREND_AFTER; }
 
 function render(){
   document.getElementById("title").textContent = S.title;
@@ -1211,8 +1225,11 @@ function renderCompare(){
     return;
   }
   let h = '<div class="wxgrid"><table class="wxt"><thead><tr><th class="ph"></th>';
+  const firstTrend = days.filter(function(d){ return isTrend(d); })[0];
   days.forEach(function(iso){
-    h += '<th class="dh'+(iso===TODAY?" today":"")+'"><span class="dw">'+DOW[dowOf(iso)]+'</span>'
+    const tr = isTrend(iso);
+    h += '<th class="dh'+(iso===TODAY?" today":"")+(tr?" trend":"")+(iso===firstTrend?" edge":"")+'">'
+       + '<span class="dw">'+DOW[dowOf(iso)]+'</span>'
        + '<span class="dn">'+dayNum(iso)+'</span></th>';
   });
   h += '</tr></thead><tbody>';
@@ -1225,10 +1242,12 @@ function renderCompare(){
       const b = weather[r.n], w = b ? b[iso] : null;
       const here = wxPlace(iso) === r.n;
       const dim  = !r.pin && !here;
-      if(!w){ h += '<td class="wc empty">·</td>'; return; }
+      const tr = isTrend(iso);
+      if(!w){ h += '<td class="wc empty'+(iso===firstTrend?" edge":"")+'">·</td>'; return; }
       const pp = w.pp || 0;
       const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
-      h += '<td class="wc'+(here?" here":"")+(dim?" dim":"")+(iso===TODAY?" today":"")+'"'
+      h += '<td class="wc'+(here?" here":"")+(tr?" soft":"")+(dim?" dim":"")
+         + (iso===TODAY?" today":"")+(iso===firstTrend?" edge":"")+'"'
          + ' title="'+esc(r.n)+' · '+WXL[wxKind(w.c)]+' · '+pp+' % · '+rainWord(w)+'">'
          + wxIcon(wxKind(w.c), 20)
          + '<span class="ct">'+w.max+'°</span>'
@@ -1237,7 +1256,7 @@ function renderCompare(){
     h += '</tr>';
   });
   h += '</tbody></table></div>'
-     + '<p class="hint" style="margin-top:14px">Umrandet = dein geplanter Ort an diesem Tag. Die Zahl unter der Temperatur ist die Regenwahrscheinlichkeit in Prozent. Über die Nadel heftest du einen Ort dauerhaft an; nicht angeheftete Orte sind an Tagen, an denen du nicht dort bist, gedämpft.</p>';
+     + '<p class="hint" style="margin-top:14px">Ab der gestrichelten Linie liegt die Vorhersage mehr als eine Woche voraus: die feinen Regionalmodelle reichen nicht so weit, die Zahlen kommen aus dem globalen Modell. Als Tendenz lesen, nicht als Termin. — Umrandet = dein geplanter Ort an diesem Tag. Die Zahl unter der Temperatur ist die Regenwahrscheinlichkeit in Prozent. Über die Nadel heftest du einen Ort dauerhaft an; nicht angeheftete Orte sind an Tagen, an denen du nicht dort bist, gedämpft.</p>';
   el.innerHTML = h;
 }
 
@@ -1434,7 +1453,9 @@ function openDay(iso){
     ? '<div class="sh-wx">'+wxIcon(wxKind(w.c),40)+'<div><div class="big">'+w.max+'° <span style="font-size:15px;color:var(--text-2);font-weight:600">/ '+w.min+'°</span> '+rainChip(w,true)+'</div>'
       + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))
       + (x.to ? ' <span style="color:var(--text-3)">(Ziel)</span>' : '')
-      + '<br>'+rainLine(w)+'</div></div></div>'
+      + '<br>'+rainLine(w)
+      + (isTrend(iso) ? '<br><span class="tmark">Mehr als eine Woche voraus — Tendenz, kein Termin.</span>' : '')
+      + '</div></div></div>'
     : '<div class="sh-wx"><div class="meta">Keine Vorhersage für '+esc(wxPlace(iso))+' — außerhalb des 16-Tage-Fensters oder Ort ohne Koordinaten.</div></div>';
   const recs = recsFor(iso);
   const chip = function(r, plain){
