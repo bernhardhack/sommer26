@@ -216,11 +216,11 @@
     },
     {
       "t": "Lego Spike",
-      "k": "any"
+      "k": "in"
     },
     {
       "t": "AI Kurs",
-      "k": "any"
+      "k": "in"
     },
     {
       "t": "Emma Party",
@@ -251,5 +251,5 @@
       "k": "any"
     }
   ],
-  "updatedAt": 1785922524040
+  "updatedAt": 1785922527801
 }
