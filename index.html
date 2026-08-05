@@ -193,7 +193,8 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
 .rec{display:inline-flex;align-items:center;gap:7px;font-family:var(--font);font-size:13px;font-weight:600;
   background:#fff;border:1px dashed var(--line-2);border-radius:999px;padding:8px 14px;cursor:pointer;color:var(--text)}
 .rec:hover{border-style:solid;border-color:var(--text)}
-.rec .k{font-size:12px;opacity:.8}
+.rec .k{display:inline-flex;opacity:.75}
+.idea .kind svg{display:block}
 .idea .del{background:none;border:0;color:var(--text-3);cursor:pointer;font-size:14px;padding:4px 8px;opacity:0;border-radius:6px;line-height:1}
 .idea:hover .del,.idea .del:focus{opacity:1}
 .idea .del:hover{background:rgba(0,0,0,.05);color:var(--coral)}
@@ -280,8 +281,8 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
   .day.hl-start .hl{border-top-left-radius:var(--r-sm);border-bottom-left-radius:var(--r-sm)}
   .day.hl-end .hl{border-top-right-radius:var(--r-sm);border-bottom-right-radius:var(--r-sm)}
   .hl{left:-6px;right:-6px}
-  .d-num{font-size:15px}
-  .d-dow,.d-today{display:none}
+  .day .d-num{font-size:15px}
+  .day .d-dow,.day .d-today{display:none}
   .wx{gap:3px;min-height:18px;flex-wrap:wrap}
   .wx svg{width:17px;height:17px}
   .wx .t{font-size:12px}
@@ -294,9 +295,11 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
   .day .who{margin-left:0;width:100%;flex-wrap:wrap}
   .day .p{width:14px;height:14px;font-size:7.5px;margin-left:-3px;box-shadow:0 0 0 1.5px #fff}
   .day.frei .p{box-shadow:0 0 0 1.5px var(--free)}
-  .row{grid-template-columns:58px 1fr;grid-template-areas:"date main" "wx tags";row-gap:10px;padding:14px}
+  .row{grid-template-columns:96px minmax(0,1fr);grid-template-areas:"date main" "wx tags";row-gap:10px;column-gap:12px;padding:14px}
   .rw-date{grid-area:date}.rw-main{grid-area:main}.rw-wx{grid-area:wx}
-  .rw-tags{grid-area:tags;justify-content:flex-start;flex-wrap:wrap}
+  .rw-tags{grid-area:tags;justify-content:flex-start;flex-wrap:wrap;min-width:0}
+  .rw-wx .wx{flex-wrap:wrap;white-space:normal}
+  .rh{display:none}
   .sheet{left:0;top:auto;bottom:0;transform:translateY(16px);width:100vw;max-height:92vh;
     border-radius:20px 20px 0 0;padding:24px max(20px,env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom))}
   .sheet.on{transform:translateY(0)}
@@ -584,7 +587,13 @@ function setSync(st, msg){
   syncState = st;
   const el = document.getElementById("syncNote");
   if(!el) return;
-  if(!sync.token){ el.innerHTML = ""; return; }
+  if(!sync.token){
+    const r = {"reader-synced":"Aktueller Stand", "reader-local":"Nur auf diesem Gerät gespeichert",
+               "reader":"", "reader-none":""};
+    const t = r[st];
+    el.innerHTML = t ? '<span class="dot"></span> '+t : "";
+    return;
+  }
   const m = {idle:"Sync bereit", dirty:"Änderung gemerkt…", saving:"Wird hochgeladen…",
              ok:"Auf allen Geräten", err:"Sync-Fehler"+(msg?" ("+esc(msg)+")":"")};
   el.innerHTML = '<span class="dot '+(st==="err"?"err":"sync")+'"></span> '+(m[st]||"");
@@ -598,18 +607,23 @@ async function initialSync(){
   const localT  = (S && S.updatedAt) || 0;
   const remoteT = remote.updatedAt || 0;
 
-  if(!stored){ S = remote; save(); applyView(); render(); loadWeather(); setSync("ok"); return; }
+  if(!stored){
+    S = remote; save(); applyView(); render(); loadWeather();
+    setSync(sync.token ? "ok" : "reader-synced"); return;
+  }
   if(remoteT > localT){
     if(sync.token){ S = remote; save(); applyView(); render(); loadWeather(); setSync("ok"); toast("Neuer Stand geladen"); }
     else offerRemote(remote);
     return;
   }
-  if(sync.token && localT > remoteT) pushRemote(); else setSync("ok");
+  if(sync.token && localT > remoteT){ pushRemote(); return; }
+  if(sync.token){ setSync("ok"); return; }
+  setSync(localT > remoteT ? "reader-local" : "reader-synced");
 }
 function offerRemote(remote){
   const b = document.getElementById("banner");
   document.getElementById("bannerTxt").textContent =
-    "Es gibt einen neueren veröffentlichten Plan. Du siehst gerade deine eigene Version.";
+    "Der veröffentlichte Plan ist neuer als deine Version auf diesem Gerät. Ohne Sync-Token bleiben deine Änderungen nur hier.";
   b.classList.add("on");
   document.getElementById("bLoad").onclick = function(){
     S = remote; save(); b.classList.remove("on"); applyView(); render(); loadWeather(); toast("Aktueller Plan geladen");
@@ -834,7 +848,7 @@ function rainChip(w, full){
   const hrs = w.hours || 0;
   if(pp <= 0 && !(w.sum > 0)) return "";
   const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
-  const extra = (full && hrs >= 2) ? " · " + Math.round(hrs) + " h" : "";
+  const extra = (full && hrs >= 2) ? '<span class="rh"> · '+Math.round(hrs)+' h</span>' : "";
   return '<span class="rain '+lvl+'" title="Regenwahrscheinlichkeit">'+pp+'%'+extra+'</span>';
 }
 function wxHTML(iso, full){
@@ -922,12 +936,18 @@ function renderLegend(){
     return '<span class="leg-item"><span class="p" style="background:'+esc(p.c)+'">'+esc(p.id[0])+'</span> '+esc(p.name)+'</span>';
   }).join("");
 }
-const KIND_ICON = {out:"☀", in:"☂", any:"•"};
+function kindIcon(k){
+  const o = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  if(k === "out") return '<svg '+o+'><circle cx="12" cy="12" r="4.4" fill="currentColor" fill-opacity=".25"/>'
+    + '<path d="M12 2.4v2.1M12 19.5v2.1M2.4 12h2.1M19.5 12h2.1M5.2 5.2l1.5 1.5M17.3 17.3l1.5 1.5M18.8 5.2l-1.5 1.5M6.7 17.3l-1.5 1.5"/></svg>';
+  if(k === "in")  return '<svg '+o+'><path d="M3.4 11.3 12 4l8.6 7.3"/><path d="M5.6 10.2V20h12.8v-9.8"/></svg>';
+  return '<svg '+o+'><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>';
+}
 const KIND_TITLE = {out:"Draußen — passt an trockenen Tagen", in:"Drinnen — passt an Regentagen", any:"Bei jedem Wetter"};
 function renderIdeas(){
   document.getElementById("ideas").innerHTML = S.ideas.map(function(o,i){
     return '<div class="idea"><span class="grip" data-drag="idea" data-i="'+i+'" title="Auf einen Tag ziehen">⠿</span>'
-      + '<button class="kind" data-kind="'+i+'" data-k="'+esc(o.k)+'" title="'+esc(KIND_TITLE[o.k])+'">'+KIND_ICON[o.k]+'</button>'
+      + '<button class="kind" data-kind="'+i+'" data-k="'+esc(o.k)+'" title="'+esc(KIND_TITLE[o.k])+'" aria-label="'+esc(KIND_TITLE[o.k])+'">'+kindIcon(o.k)+'</button>'
       + '<span class="txt" contenteditable="plaintext-only" data-idea="'+i+'">'+esc(o.t)+'</span>'
       + '<button class="del" data-delidea="'+i+'" title="Löschen">✕</button></div>';
   }).join("") || '<p class="hint">Noch keine Ideen. Zieh etwas aus dem Kalender hierher oder leg eine neue an.</p>';
@@ -1054,7 +1074,7 @@ function openDay(iso){
     ? '<div class="f"><span class="fl">Passt zu diesem Wetter</span><div class="chips">'
       + recs.map(function(r){
           return '<button class="rec" type="button" data-rec="'+r.i+'" data-iso="'+iso+'">'
-            + '<span class="k">'+KIND_ICON[r.o.k]+'</span>'+esc(r.o.t)+'</button>';
+            + '<span class="k">'+kindIcon(r.o.k)+'</span>'+esc(r.o.t)+'</button>';
         }).join("") + '</div></div>'
     : "";
 
