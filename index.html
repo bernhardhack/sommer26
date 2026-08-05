@@ -150,7 +150,7 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .who .p:first-child{margin-left:0}
 
 /* ---------- list ---------- */
-.row{position:relative;display:grid;grid-template-columns:64px 110px 1fr auto;gap:16px;align-items:center;
+.row{position:relative;display:grid;grid-template-columns:64px 184px minmax(0,1fr) auto;gap:16px;align-items:center;
   background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:8px;
   width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:var(--sh);
   transition:box-shadow .18s ease}
@@ -166,7 +166,8 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .rw-date .d-num{font-size:24px}
 .rw-main{position:relative;z-index:1;min-width:0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .rw-tags{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
-.rw-wx{position:relative;z-index:1}
+.rw-wx{position:relative;z-index:1;min-width:0}
+.rw-wx .wx{flex-wrap:nowrap;white-space:nowrap}
 
 #cal{display:none}#list{display:none}
 body.view-week #cal{display:block}
@@ -1066,7 +1067,6 @@ function openDay(iso){
     + '<button type="button" class="close" id="closeD" aria-label="Schließen">✕</button></div></div>'
     + '<p class="sh-sub">'+(x.frei?"Frei":(x.mode||"Kein Eintrag"))+(blockLen>1?' · Tag '+(diffD(b.from,iso)+1)+' von '+blockLen:'')+'</p>'
     + wxBox
-    + recBox
     + '<div class="f"><span class="fl">Status</span><div class="chips">'
       + '<button class="chip frei" type="button" data-t="frei" aria-pressed="'+(!!x.frei)+'">Frei</button>'
       + '<button class="chip" type="button" data-m="TA" aria-pressed="'+(x.mode==="TA")+'">TA</button>'
@@ -1086,6 +1086,7 @@ function openDay(iso){
       + '<button class="chip add" type="button" id="addWho">+ Person</button>'
       + '</div></div>'
     + '<p class="hint">Das Wetter folgt dem Ort des Tages — ohne Eintrag gilt der letzte bekannte Ort. Neue Orte werden automatisch geokodiert.</p>'
+    + recBox
     + '<div class="sh-foot"><button class="linkbtn" type="button" id="clearD">Tag leeren</button>'
     + '<button class="linkbtn go" type="button" id="doneD">Fertig</button></div>';
 

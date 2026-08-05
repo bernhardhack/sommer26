@@ -1,6 +1,6 @@
 /* Sommer 26 — offline shell.
    Bump CACHE when you change index.html so phones pick up the new version. */
-const CACHE = "sommer26-v3";
+const CACHE = "sommer26-v4";
 const SHELL = [
   "./",
   "./index.html",
