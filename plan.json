@@ -5,7 +5,7 @@
   "start": "2026-08-03",
   "end": "2026-08-23",
   "base": "Steyr",
-  "view": "week",
+  "view": "list",
   "days": {
     "2026-08-03": {
       "place": "Steyr",
@@ -251,5 +251,5 @@
       "k": "out"
     }
   ],
-  "updatedAt": 1785922546151
+  "updatedAt": 1785922944609
 }
