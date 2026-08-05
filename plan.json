@@ -247,9 +247,13 @@
       "k": "any"
     },
     {
+      "t": "Triftsteig",
+      "k": "any"
+    },
+    {
       "t": "Neue Idee",
       "k": "any"
     }
   ],
-  "updatedAt": 1785922440141
+  "updatedAt": 1785922460093
 }
