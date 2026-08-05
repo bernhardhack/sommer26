@@ -240,6 +240,9 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
   color:var(--text-3);display:grid;place-items:center;flex:0 0 auto;padding:0}
 .pinbtn:hover{border-color:var(--text-3);color:var(--text-2)}
 .pinbtn.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.restrow{margin-top:20px;display:flex;flex-direction:column;gap:9px}
+.restrow .rec{gap:8px;color:var(--text-2)}
+.restrow .rec svg{opacity:.6}
 .wxgrid{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;
   overscroll-behavior-x:contain;touch-action:pan-x pan-y pinch-zoom}
 table.wxt{border-collapse:separate;border-spacing:4px;font-family:var(--font)}
@@ -1217,6 +1220,19 @@ function compareDays(){
   if(!win) return [];
   return dateList().filter(function(iso){ return iso >= win.start && iso <= win.end; });
 }
+/* Anything known but not currently shown, one tap from coming back —
+   so unpinning a row never hides the way to undo it. */
+function restRow(){
+  const shown = {};
+  compareRows().forEach(function(r){ shown[r.n] = 1; });
+  const rest = Object.keys(S.places).filter(function(n){ return !shown[n]; })
+                     .sort(function(a,b){ return a.localeCompare(b,"de"); });
+  if(!rest.length) return "";
+  return '<div class="restrow"><span class="lbl">Weitere Orte</span><div class="chips">'
+    + rest.map(function(n){
+        return '<button type="button" class="rec plain" data-pin="'+esc(n)+'">'+pinIcon()+esc(n)+'</button>';
+      }).join("") + '</div></div>';
+}
 function renderCompare(){
   const rows = compareRows(), days = compareDays();
   const el = document.getElementById("places");
@@ -1256,6 +1272,7 @@ function renderCompare(){
     h += '</tr>';
   });
   h += '</tbody></table></div>'
+     + restRow()
      + '<p class="hint" style="margin-top:14px">Ab der gestrichelten Linie liegt die Vorhersage mehr als eine Woche voraus: die feinen Regionalmodelle reichen nicht so weit, die Zahlen kommen aus dem globalen Modell. Als Tendenz lesen, nicht als Termin. — Umrandet = dein geplanter Ort an diesem Tag. Die Zahl unter der Temperatur ist die Regenwahrscheinlichkeit in Prozent. Über die Nadel heftest du einen Ort dauerhaft an; nicht angeheftete Orte sind an Tagen, an denen du nicht dort bist, gedämpft.</p>';
   el.innerHTML = h;
 }
@@ -1771,7 +1788,7 @@ document.addEventListener("click", function(e){
     S.pins = S.pins || [];
     const at = S.pins.indexOf(n);
     if(at >= 0) S.pins.splice(at,1); else S.pins.push(n);
-    saved(at >= 0 ? n+" gelöst" : n+" angeheftet");
+    saved(at >= 0 ? n+" gelöst — unten unter „Weitere Orte“" : n+" angeheftet");
     render(); loadWeather(); return;
   }
   const kk = e.target.closest("[data-kind]");
