@@ -33,27 +33,35 @@ It has to be **https** for the offline cache to switch on. GitHub Pages is https
 
 It then opens full screen with no browser chrome, keeps working without signal, and shows the `26` icon.
 
-**Updating it later:** push a new `index.html`, then bump `CACHE` in `sw.js` (currently `sommer26-v2`). Without the bump, phones may keep serving the cached copy.
+**Updating it later:** push a new `index.html`, then bump `CACHE` in `sw.js` (currently `sommer26-v3`). Without the bump, phones may keep serving the cached copy. `plan.json` is never cached, so plan changes always come through live.
 
-## How the data works — and what other people see
+## Syncing your devices, sharing with everyone else
 
-There is no server. That has consequences worth being explicit about:
+One editor, many readers — using the repo itself as the store. No extra service.
 
-- **A first-time visitor** sees the plan baked into `index.html` (the `seed()` function).
-- **Their edits save to their own browser only.** Nobody sees anyone else's changes, and yours don't reach them.
-- **Once someone has edited anything**, their local copy wins forever — a newer `seed()` pushed to GitHub would otherwise never reach them.
+**`plan.json` in this repo is the live plan.** Anyone opening the Pages URL fetches it and sees your current state. That's the family link: nothing to install, nothing to sign into, always up to date.
 
-That last point is handled by `SEED_VERSION` at the top of the script. Bump it whenever you change the published plan; anyone with local edits then gets a banner offering the new version or letting them keep theirs.
+**Your own devices write back to it.** In *Einstellungen* there's a **Sync-Token** field. Paste a fine-grained PAT there — scoped to this repo only, Contents: read/write — and that device commits `plan.json` about two seconds after each change, and pulls the newest version when you open the app. Do this on your phone and your laptop and they stay in step.
 
-Three ways to move a plan between people or devices:
+Set it up once per device:
+
+1. GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate new token.
+2. Repository access: **Only select repositories** → `sommer26`. Permissions: **Contents: Read and write**. Nothing else.
+3. Open the app on that device → Einstellungen → paste into Sync-Token.
+
+**The token is stored in that browser's localStorage and never leaves it** — it isn't in `index.html`, isn't in exports, and isn't in shared links. But it is a write credential sitting in a browser, so: scope it to this one repo, give it an expiry, and revoke it if you lose the device. Worst case someone edits a holiday planner.
+
+A reader who never enters a token simply can't write. Their local edits stay on their machine; when you publish a newer plan they get a banner offering it.
+
+### Other ways to move a plan
 
 | | What it does |
 |---|---|
-| **Link kopieren** | Packs the whole plan into a URL. Whoever opens it is asked whether to load it. Good for sharing a snapshot. |
-| **Export / Import** | Same data as a JSON file. |
-| **Edit `seed()`** | Export the JSON, paste it into `seed()`, bump `SEED_VERSION`, push. Now it's the published plan everyone starts from. |
+| **Link kopieren** | Packs the whole plan into a URL. A frozen snapshot — good for "here's the plan as of today". |
+| **Export / Import** | The same data as a JSON file. |
+| **Edit `seed()`** | The fallback plan for someone with no `plan.json` and no local copy. Bump `SEED_VERSION` when you change it. |
 
-For genuinely shared, live editing you'd need a backend — a Gist, Supabase, or similar. That's a different project.
+For several people editing at once you'd need real conflict handling. This is last-write-wins, which is correct for one editor and wrong for a family.
 
 ## Weather
 
@@ -62,12 +70,14 @@ For genuinely shared, live editing you'd need a backend — a Gist, Supabase, or
 Two limits worth knowing:
 
 - The forecast reaches **16 days out**. Days beyond that show `—` and fill in as they come into range.
+- Each day shows **rain probability** as a coloured chip — grey under 25 %, mint to 60 %, solid teal above. A day counts as *wet* if rain is expected for 4+ hours, 3+ mm, or at 60 %+ probability. The day sheet spells out probability, millimetres and hours.
 - Each day's forecast is fetched for **that day's location** — destination if you're travelling, otherwise the place, otherwise the last place carried forward. Type a location the app doesn't know and it geocodes it automatically on save.
 
 ## Editing
 
 - **Tap a day** — status toggles (Frei / TA / ZA / Büro / Offen), Wo, Weiter nach, Was, and who's there. `‹ ›` or the arrow keys move to the next day without closing.
 - **Drag an idea** by its grip onto any day. Drag the note back out of the day onto the ideas panel to return it. Dragging a note from one day to another moves it.
+- **Each idea carries a weather kind** — ☀ outdoor, ☂ indoor, • any — toggled by clicking the circle. The day sheet then offers the ones that suit that day's forecast under *Passt zu diesem Wetter*; tap one to assign it.
 - **Title, subtitle and ideas** are edited in place — click and type.
 - **Einstellungen** — trip dates, default location, and the people list.
 
@@ -77,4 +87,4 @@ Two limits worth knowing:
 
 ## Design
 
-Plus Jakarta Sans, warm off-white ground, soft-shadowed white cards, muted sage and coral accents. Free-day runs render as one continuous soft band with rounded ends — the same visual grammar as a date-range picker.
+Plus Jakarta Sans, warm off-white ground, soft-shadowed white cards, muted sage and coral accents. Free-day runs render as one continuous soft band with rounded ends — the same visual grammar as a date-range picker. In week view the location sits at the foot of each tile, so the bottom edge of the grid reads as an itinerary.

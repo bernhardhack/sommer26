@@ -1,6 +1,6 @@
 /* Sommer 26 — offline shell.
    Bump CACHE when you change index.html so phones pick up the new version. */
-const CACHE = "sommer26-v2";
+const CACHE = "sommer26-v3";
 const SHELL = [
   "./",
   "./index.html",
@@ -39,6 +39,9 @@ self.addEventListener("fetch", function (e) {
 
   // Weather and geocoding: always live, never cached.
   if (url.hostname.indexOf("open-meteo.com") !== -1) return;
+
+  // The live plan must never come from cache.
+  if (url.pathname.indexOf("plan.json") !== -1) return;
 
   // Fonts: cache-first, they never change.
   if (url.hostname.indexOf("fonts.googleapis.com") !== -1 ||

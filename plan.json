@@ -1,0 +1,227 @@
+{
+  "seedVersion": 4,
+  "title": "Sommer 26",
+  "subtitle": "Nach dem Attersee (26.7.–1.8.): drei Wochen zwischen Steyr, Brunnbach, Linz und dem Wolfgangsee. Das Wetter kommt jeweils vom Ort des Tages.",
+  "start": "2026-08-03",
+  "end": "2026-08-23",
+  "base": "Steyr",
+  "view": "",
+  "days": {
+    "2026-08-03": {
+      "place": "Steyr",
+      "mode": "TA",
+      "what": "Spike Kit, baden",
+      "who": [
+        "J",
+        "E",
+        "P",
+        "B1",
+        "B2"
+      ]
+    },
+    "2026-08-04": {
+      "place": "Steyr",
+      "to": "Brunnbach",
+      "mode": "Büro",
+      "what": "Wasserrad, baden",
+      "who": [
+        "J",
+        "E",
+        "P",
+        "O1",
+        "O2"
+      ]
+    },
+    "2026-08-05": {
+      "place": "Brunnbach",
+      "to": "Steyr",
+      "mode": "Büro"
+    },
+    "2026-08-06": {
+      "mode": "ZA",
+      "frei": true
+    },
+    "2026-08-07": {
+      "mode": "ZA",
+      "frei": true
+    },
+    "2026-08-08": {
+      "frei": true
+    },
+    "2026-08-09": {
+      "frei": true
+    },
+    "2026-08-10": {
+      "mode": "TA"
+    },
+    "2026-08-11": {
+      "place": "Steyr",
+      "mode": "Büro",
+      "what": "Messer machen",
+      "who": [
+        "J"
+      ]
+    },
+    "2026-08-12": {
+      "mode": "Büro"
+    },
+    "2026-08-13": {
+      "place": "Linz",
+      "mode": "Büro",
+      "what": "Ars Electronica WS",
+      "who": [
+        "J",
+        "E"
+      ]
+    },
+    "2026-08-14": {
+      "place": "Wolfgangsee",
+      "mode": "ZA",
+      "frei": true
+    },
+    "2026-08-15": {
+      "place": "Wolfgangsee",
+      "frei": true
+    },
+    "2026-08-16": {
+      "place": "Wolfgangsee",
+      "frei": true
+    },
+    "2026-08-17": {
+      "place": "Wolfgangsee",
+      "mode": "ZA",
+      "frei": true
+    },
+    "2026-08-18": {
+      "place": "Wolfgangsee",
+      "mode": "ZA",
+      "frei": true
+    },
+    "2026-08-19": {
+      "place": "Steyr",
+      "mode": "ZA",
+      "what": "Ale arrives Linz 5:58",
+      "frei": true
+    },
+    "2026-08-20": {
+      "place": "Steyr",
+      "mode": "ZA",
+      "what": "Last Day, depart Slzbg 22:02",
+      "who": [
+        "J",
+        "E",
+        "A"
+      ],
+      "frei": true
+    },
+    "2026-08-21": {
+      "place": "Steyr",
+      "mode": "TA",
+      "offen": true
+    },
+    "2026-08-22": {
+      "frei": true
+    },
+    "2026-08-23": {
+      "place": "Steyr",
+      "to": "Wien",
+      "frei": true,
+      "offen": true
+    }
+  },
+  "people": [
+    {
+      "id": "J",
+      "name": "Jacob",
+      "c": "#3D5A80"
+    },
+    {
+      "id": "E",
+      "name": "Emma",
+      "c": "#C1666B"
+    },
+    {
+      "id": "P",
+      "name": "Pippa",
+      "c": "#0E7C74"
+    },
+    {
+      "id": "B1",
+      "name": "Bert",
+      "c": "#7D6B9E"
+    },
+    {
+      "id": "B2",
+      "name": "Ben",
+      "c": "#5B8C6E"
+    },
+    {
+      "id": "O1",
+      "name": "Opa",
+      "c": "#C08552"
+    },
+    {
+      "id": "O2",
+      "name": "Oma",
+      "c": "#A6799B"
+    },
+    {
+      "id": "A",
+      "name": "Ale",
+      "c": "#D08C60"
+    }
+  ],
+  "places": {
+    "Steyr": {
+      "lat": 48.0387,
+      "lon": 14.4211
+    },
+    "Brunnbach": {
+      "lat": 47.77,
+      "lon": 14.53
+    },
+    "Linz": {
+      "lat": 48.3069,
+      "lon": 14.2858
+    },
+    "Wolfgangsee": {
+      "lat": 47.7386,
+      "lon": 13.4472
+    },
+    "Wien": {
+      "lat": 48.2082,
+      "lon": 16.3738
+    },
+    "Taiskirchen": {
+      "lat": 48.2569,
+      "lon": 13.5453
+    },
+    "Graz": {
+      "lat": 47.0707,
+      "lon": 15.4395
+    }
+  },
+  "ideas": [
+    {
+      "t": "Emma Party",
+      "k": "any"
+    },
+    {
+      "t": "Free Tree Open Air, Taiskirchen — 7.–9.8.",
+      "k": "out"
+    },
+    {
+      "t": "La Strada, Graz — bis 8.8.",
+      "k": "out"
+    },
+    {
+      "t": "Wien — Haus des Meeres",
+      "k": "in"
+    },
+    {
+      "t": "Brunnbach — Wasserrad, baden",
+      "k": "out"
+    }
+  ],
+  "updatedAt": 1785919618785
+}

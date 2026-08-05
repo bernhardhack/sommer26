@@ -79,6 +79,11 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .wx-note button{font:inherit;font-size:13px;font-weight:600;color:var(--teal);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);display:inline-block;flex:0 0 auto}
 .dot.live{background:var(--sage)}.dot.err{background:var(--coral)}
+.dot.sync{background:var(--teal)}
+.sync-note{font-size:13px;color:var(--text-2);display:flex;align-items:center;gap:8px}
+.f input[type=password]{width:100%;font-family:var(--font);font-size:15px;color:var(--text);background:#fff;
+  border:1px solid var(--line-2);border-radius:var(--r-sm);padding:11px 13px}
+.f input[type=password]:focus{outline:none;border-color:var(--text);box-shadow:0 0 0 3px rgba(0,0,0,.06)}
 
 /* ---------- calendar ---------- */
 .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:10px}
@@ -116,11 +121,15 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .wx svg{width:24px;height:24px;flex:0 0 auto}
 .wx .t{font-size:15px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .wx .tmin{font-size:13px;color:var(--text-2);font-variant-numeric:tabular-nums}
-.wx .pp{font-size:12px;font-weight:600;color:var(--teal)}
+.rain{font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:999px;line-height:1.45;white-space:nowrap}
+.rain.lo{background:#F0F0EC;color:var(--text-2)}
+.rain.mid{background:#DFEDEB;color:var(--teal)}
+.rain.hi{background:var(--teal);color:#fff}
 .wx.empty{opacity:.4}
 .wx.empty .t{color:var(--text-3);font-weight:500;font-size:13px}
 
 .d-body{display:flex;flex-direction:column;gap:7px;position:relative;z-index:1;margin-top:auto}
+.d-body .place{order:9;margin-top:1px}
 .place{font-size:14px;font-weight:600;line-height:1.3;display:block;letter-spacing:-.01em}
 .place.implied{color:var(--text-2);font-weight:500}
 .arrow{color:var(--text-3);font-weight:500}
@@ -175,6 +184,15 @@ h2{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
 .idea .grip:hover{background:rgba(0,0,0,.05);color:var(--text-2)}
 .idea .grip:active{cursor:grabbing}
 .idea .txt{flex:1;min-width:0;padding:2px 4px}
+.idea .kind{background:none;border:1px solid var(--line-2);color:var(--text-2);cursor:pointer;font-size:12px;
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;line-height:1;font-family:var(--font)}
+.idea .kind:hover{border-color:var(--text)}
+.idea .kind[data-k="out"]{background:#FBF2E4;border-color:#EBDCC2;color:#9A6B2F}
+.idea .kind[data-k="in"]{background:#E3EFEE;border-color:#CBE2E0;color:var(--teal)}
+.rec{display:inline-flex;align-items:center;gap:7px;font-family:var(--font);font-size:13px;font-weight:600;
+  background:#fff;border:1px dashed var(--line-2);border-radius:999px;padding:8px 14px;cursor:pointer;color:var(--text)}
+.rec:hover{border-style:solid;border-color:var(--text)}
+.rec .k{font-size:12px;opacity:.8}
 .idea .del{background:none;border:0;color:var(--text-3);cursor:pointer;font-size:14px;padding:4px 8px;opacity:0;border-radius:6px;line-height:1}
 .idea:hover .del,.idea .del:focus{opacity:1}
 .idea .del:hover{background:rgba(0,0,0,.05);color:var(--coral)}
@@ -263,10 +281,11 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
   .hl{left:-6px;right:-6px}
   .d-num{font-size:15px}
   .d-dow,.d-today{display:none}
-  .wx{gap:3px;min-height:18px}
+  .wx{gap:3px;min-height:18px;flex-wrap:wrap}
   .wx svg{width:17px;height:17px}
   .wx .t{font-size:12px}
-  .wx .tmin,.wx .pp{display:none}
+  .wx .tmin{display:none}
+  .day .rain{font-size:9px;padding:1px 5px}
   .day .place{font-size:10.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .day .what{display:none}
   .day .tag{font-size:8.5px;padding:2px 5px}
@@ -307,6 +326,7 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
         <button class="pill" id="btnSettings">Einstellungen</button>
       </div>
       <div class="wx-note" id="wxNote"><span class="dot"></span> Wetter wird geladen…</div>
+      <div class="sync-note" id="syncNote"></div>
     </div>
   </header>
 
@@ -403,11 +423,11 @@ function seed(){
       "Graz":{lat:47.0707,lon:15.4395}
     },
     ideas:[
-      "Emma Party",
-      "Free Tree Open Air, Taiskirchen — 7.–9.8.",
-      "La Strada, Graz — bis 8.8.",
-      "Wien — Haus des Meeres",
-      "Brunnbach — Wasserrad, baden"
+      {t:"Emma Party", k:"any"},
+      {t:"Free Tree Open Air, Taiskirchen — 7.–9.8.", k:"out"},
+      {t:"La Strada, Graz — bis 8.8.", k:"out"},
+      {t:"Wien — Haus des Meeres", k:"in"},
+      {t:"Brunnbach — Wasserrad, baden", k:"out"}
     ]
   };
 }
@@ -421,7 +441,11 @@ function load(){
   catch(e){ canPersist = false; }
   return null;
 }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ canPersist = false; } }
+function save(){
+  S.updatedAt = Date.now();
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ canPersist = false; }
+  schedulePush();
+}
 function saved(msg){ save(); toast(msg || (canPersist ? "Gespeichert" : "Nur in dieser Sitzung")); }
 
 function b64enc(str){
@@ -435,10 +459,23 @@ function b64dec(s){
   const bytes = Uint8Array.from(bin, function(c){ return c.charCodeAt(0); });
   return new TextDecoder().decode(bytes);
 }
+function b64std(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = ""; bytes.forEach(function(b){ bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+function b64stdDec(s){
+  const bin = atob(String(s).replace(/\s+/g,""));
+  const bytes = Uint8Array.from(bin, function(c){ return c.charCodeAt(0); });
+  return new TextDecoder().decode(bytes);
+}
 function normalise(o){
   if(!o.places) o.places = {};
   if(!o.people) o.people = [];
   if(!o.ideas)  o.ideas  = [];
+  o.ideas = o.ideas.map(function(x){
+    return (typeof x === "string") ? {t:x, k:"any"} : {t:(x && x.t) || "", k:(x && x.k) || "any"};
+  }).filter(function(x){ return x.t; });
   return o;
 }
 
@@ -478,6 +515,105 @@ function checkSeedVersion(){
   document.getElementById("bKeep").onclick = function(){
     S.seedVersion = SEED_VERSION; save(); b.classList.remove("on");
   };
+}
+
+/* ================= sync (one editor, many readers) =================
+   Editor devices hold a fine-grained PAT in localStorage and write
+   plan.json back to the repo. Everyone else just reads plan.json off
+   GitHub Pages — no token, always the published state. */
+const SYNC_KEY = "sommer26.sync";
+let sync = {token:"", repo:"bernhardhack/sommer26", path:"plan.json", branch:"main"};
+try{
+  const raw = localStorage.getItem(SYNC_KEY);
+  if(raw) sync = Object.assign(sync, JSON.parse(raw));
+}catch(e){}
+function saveSync(){ try{ localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); }catch(e){} }
+let remoteSha = null, syncState = sync.token ? "idle" : "reader", pushT = null;
+
+function ghHeaders(){
+  return {Authorization:"Bearer "+sync.token, Accept:"application/vnd.github+json",
+          "X-GitHub-Api-Version":"2022-11-28"};
+}
+function ghUrl(){
+  return "https://api.github.com/repos/"+sync.repo+"/contents/"+sync.path;
+}
+async function pullRemote(){
+  if(sync.token){
+    const r = await fetch(ghUrl()+"?ref="+encodeURIComponent(sync.branch)+"&t="+Date.now(), {headers:ghHeaders()});
+    if(r.status === 404){ remoteSha = null; return null; }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j = await r.json();
+    remoteSha = j.sha;
+    return normalise(JSON.parse(b64stdDec(j.content)));
+  }
+  const r = await fetch("plan.json?t="+Date.now(), {cache:"no-store"});
+  if(!r.ok) return null;
+  return normalise(await r.json());
+}
+async function pushRemote(){
+  if(!sync.token) return;
+  setSync("saving");
+  try{
+    if(remoteSha === null){ try{ await pullRemote(); }catch(e){} }
+    const body = {
+      message: "Update plan — " + new Date().toISOString().slice(0,16).replace("T"," "),
+      content: b64std(JSON.stringify(S, null, 2)),
+      branch: sync.branch
+    };
+    if(remoteSha) body.sha = remoteSha;
+    const r = await fetch(ghUrl(), {method:"PUT", headers:ghHeaders(), body:JSON.stringify(body)});
+    if(!r.ok){
+      const j = await r.json().catch(function(){ return {}; });
+      throw new Error(j.message || ("HTTP "+r.status));
+    }
+    const j = await r.json();
+    remoteSha = j.content && j.content.sha;
+    setSync("ok");
+  }catch(e){
+    setSync("err", e.message);
+  }
+}
+function schedulePush(){
+  if(!sync.token) return;
+  clearTimeout(pushT);
+  setSync("dirty");
+  pushT = setTimeout(pushRemote, 2000);
+}
+function setSync(st, msg){
+  syncState = st;
+  const el = document.getElementById("syncNote");
+  if(!el) return;
+  if(!sync.token){ el.innerHTML = ""; return; }
+  const m = {idle:"Sync bereit", dirty:"Änderung gemerkt…", saving:"Wird hochgeladen…",
+             ok:"Auf allen Geräten", err:"Sync-Fehler"+(msg?" ("+esc(msg)+")":"")};
+  el.innerHTML = '<span class="dot '+(st==="err"?"err":"sync")+'"></span> '+(m[st]||"");
+}
+async function initialSync(){
+  let remote = null;
+  try{ remote = await pullRemote(); }
+  catch(e){ setSync("err", e.message); return; }
+  if(!remote){ if(sync.token) setSync("idle"); return; }
+
+  const localT  = (S && S.updatedAt) || 0;
+  const remoteT = remote.updatedAt || 0;
+
+  if(!stored){ S = remote; save(); applyView(); render(); loadWeather(); setSync("ok"); return; }
+  if(remoteT > localT){
+    if(sync.token){ S = remote; save(); applyView(); render(); loadWeather(); setSync("ok"); toast("Neuer Stand geladen"); }
+    else offerRemote(remote);
+    return;
+  }
+  if(sync.token && localT > remoteT) pushRemote(); else setSync("ok");
+}
+function offerRemote(remote){
+  const b = document.getElementById("banner");
+  document.getElementById("bannerTxt").textContent =
+    "Es gibt einen neueren veröffentlichten Plan. Du siehst gerade deine eigene Version.";
+  b.classList.add("on");
+  document.getElementById("bLoad").onclick = function(){
+    S = remote; save(); b.classList.remove("on"); applyView(); render(); loadWeather(); toast("Aktueller Plan geladen");
+  };
+  document.getElementById("bKeep").onclick = function(){ b.classList.remove("on"); };
 }
 
 /* ================= dates ================= */
@@ -611,7 +747,7 @@ async function loadWeather(){
   const results = await Promise.all(names.map(function(n){
     const p = S.places[n];
     const u = "https://api.open-meteo.com/v1/forecast?latitude="+p.lat+"&longitude="+p.lon
-      + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
+      + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,precipitation_hours"
       + "&timezone=Europe%2FVienna&start_date="+win.start+"&end_date="+win.end;
     return fetch(u)
       .then(function(r){ return r.json().then(function(j){
@@ -630,7 +766,9 @@ async function loadWeather(){
       if(dd.temperature_2m_max[k]==null) return;
       b[t] = {c:dd.weather_code[k], max:Math.round(dd.temperature_2m_max[k]),
               min:Math.round(dd.temperature_2m_min[k]),
-              pp:dd.precipitation_probability_max ? dd.precipitation_probability_max[k] : null};
+              pp:dd.precipitation_probability_max ? dd.precipitation_probability_max[k] : null,
+              sum:dd.precipitation_sum ? dd.precipitation_sum[k] : null,
+              hours:dd.precipitation_hours ? dd.precipitation_hours[k] : null};
     });
     ok++;
   });
@@ -681,11 +819,37 @@ function whoHTML(iso){
     return '<span class="p" style="background:'+esc(p.c)+'" title="'+esc(p.name)+'">'+esc(p.id[0])+'</span>';
   }).join("") + '</span>';
 }
-function wxHTML(iso){
+/* a day counts as wet if it is likely to rain for a meaningful stretch,
+   not merely if a shower is possible */
+function isWet(w){
+  if(!w) return false;
+  if(w.hours != null && w.hours >= 4) return true;
+  if(w.sum   != null && w.sum   >= 3) return true;
+  return (w.pp != null && w.pp >= 60);
+}
+function rainChip(w, full){
+  if(!w) return "";
+  const pp = w.pp || 0;
+  const hrs = w.hours || 0;
+  if(pp <= 0 && !(w.sum > 0)) return "";
+  const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
+  const extra = (full && hrs >= 2) ? " · " + Math.round(hrs) + " h" : "";
+  return '<span class="rain '+lvl+'" title="Regenwahrscheinlichkeit">'+pp+'%'+extra+'</span>';
+}
+function wxHTML(iso, full){
   const w = wxFor(iso);
   if(!w) return '<span class="wx empty"><span class="t">—</span></span>';
-  const pp = (w.pp!=null && w.pp>=20) ? '<span class="pp">'+w.pp+'%</span>' : "";
-  return '<span class="wx">'+wxIcon(wxKind(w.c))+'<span class="t">'+w.max+'°</span><span class="tmin">'+w.min+'°</span>'+pp+'</span>';
+  return '<span class="wx">'+wxIcon(wxKind(w.c))+'<span class="t">'+w.max+'°</span>'
+    + '<span class="tmin">'+w.min+'°</span>'+rainChip(w, full)+'</span>';
+}
+function rainLine(w){
+  if(!w) return "";
+  const bits = [];
+  if(w.pp != null)  bits.push(w.pp + " % Regenwahrscheinlichkeit");
+  if(w.sum != null && w.sum > 0) bits.push(String(w.sum).replace(".", ",") + " mm");
+  if(w.hours != null && w.hours > 0) bits.push("Regen über " + Math.round(w.hours) + " Std.");
+  if(!bits.length) return "Kein Niederschlag erwartet.";
+  return bits.join(" · ") + (isWet(w) ? " — eher ein Indoor-Tag." : " — im Wesentlichen trocken.");
 }
 function hlCls(iso, weekAware){
   const b = blockOf(iso); if(!b) return "";
@@ -724,8 +888,9 @@ function renderWeeks(){
       + '<span class="d-top"><span class="d-num">'+dayNum(iso)+'</span><span class="d-dow">'+dayLabel(iso,all)+'</span>'
       + (iso===TODAY?'<span class="d-today">heute</span>':'')+'</span>'
       + wxHTML(iso)
-      + '<span class="d-body">'+placeCell(iso)+whatCell(iso)
-      + '<span class="tags">'+tagsHTML(iso)+whoHTML(iso)+'</span></span></button>';
+      + '<span class="d-body">'+whatCell(iso)
+      + '<span class="tags">'+tagsHTML(iso)+whoHTML(iso)+'</span>'
+      + placeCell(iso)+'</span></button>';
     col++;
     if(col===7){ html += '<div class="week">'+row+'</div>'; row=""; col=0; }
   });
@@ -740,7 +905,7 @@ function renderList(){
     return '<button class="'+cls+'" data-iso="'+iso+'" data-drop="day" type="button">'
       + (blockOf(iso)?'<span class="hl"></span>':'')
       + '<span class="rw-date"><span class="d-num">'+dayNum(iso)+'</span><span class="d-dow">'+dayLabel(iso,all)+'</span></span>'
-      + '<span class="rw-wx">'+wxHTML(iso)+'</span>'
+      + '<span class="rw-wx">'+wxHTML(iso, true)+'</span>'
       + '<span class="rw-main">'+placeCell(iso)+whatCell(iso)+'</span>'
       + '<span class="rw-tags">'+tagsHTML(iso)+whoHTML(iso)+'</span></button>';
   }).join("");
@@ -756,12 +921,24 @@ function renderLegend(){
     return '<span class="leg-item"><span class="p" style="background:'+esc(p.c)+'">'+esc(p.id[0])+'</span> '+esc(p.name)+'</span>';
   }).join("");
 }
+const KIND_ICON = {out:"☀", in:"☂", any:"•"};
+const KIND_TITLE = {out:"Draußen — passt an trockenen Tagen", in:"Drinnen — passt an Regentagen", any:"Bei jedem Wetter"};
 function renderIdeas(){
-  document.getElementById("ideas").innerHTML = S.ideas.map(function(t,i){
+  document.getElementById("ideas").innerHTML = S.ideas.map(function(o,i){
     return '<div class="idea"><span class="grip" data-drag="idea" data-i="'+i+'" title="Auf einen Tag ziehen">⠿</span>'
-      + '<span class="txt" contenteditable="plaintext-only" data-idea="'+i+'">'+esc(t)+'</span>'
+      + '<button class="kind" data-kind="'+i+'" data-k="'+esc(o.k)+'" title="'+esc(KIND_TITLE[o.k])+'">'+KIND_ICON[o.k]+'</button>'
+      + '<span class="txt" contenteditable="plaintext-only" data-idea="'+i+'">'+esc(o.t)+'</span>'
       + '<button class="del" data-delidea="'+i+'" title="Löschen">✕</button></div>';
   }).join("") || '<p class="hint">Noch keine Ideen. Zieh etwas aus dem Kalender hierher oder leg eine neue an.</p>';
+}
+/* which of your own ideas suit this day's weather */
+function recsFor(iso){
+  const w = wxFor(iso);
+  if(!w || get(iso).what) return [];
+  const wet = isWet(w);
+  return S.ideas.map(function(o,i){ return {o:o, i:i}; })
+    .filter(function(r){ return r.o.k === "any" || (wet ? r.o.k === "in" : r.o.k === "out"); })
+    .slice(0,4);
 }
 
 /* ================= drag & drop ================= */
@@ -794,8 +971,9 @@ document.addEventListener("pointerdown", function(e){
 
 function beginDrag(h){
   const type = h.dataset.drag;
-  const text = type==="idea" ? S.ideas[+h.dataset.i] : get(h.dataset.iso).what;
-  dragging = {type:type, text:text, i:h.dataset.i, iso:h.dataset.iso};
+  const text = type==="idea" ? S.ideas[+h.dataset.i].t : get(h.dataset.iso).what;
+  const kind = type==="idea" ? S.ideas[+h.dataset.i].k : "any";
+  dragging = {type:type, text:text, kind:kind, i:h.dataset.i, iso:h.dataset.iso};
   ghost = document.createElement("div");
   ghost.className = "ghost";
   ghost.textContent = text || "";
@@ -824,7 +1002,7 @@ function endDrag(x,y){
 
   if(target.id === "ideasPanel"){
     if(d.type === "what"){
-      S.ideas.push(d.text);
+      S.ideas.push({t:d.text, k:"any"});
       set(d.iso, {what:""});
       saved("Zurück in den Ideen");
       render();
@@ -867,9 +1045,17 @@ function openDay(iso){
   const blockLen = b ? diffD(b.from,b.to)+1 : 0;
   const known = Object.keys(S.places).map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
   const wxBox = w
-    ? '<div class="sh-wx">'+wxIcon(wxKind(w.c),40)+'<div><div class="big">'+w.max+'° <span style="font-size:15px;color:var(--text-2);font-weight:600">/ '+w.min+'°</span></div>'
-      + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))+(w.pp!=null?' · '+w.pp+'% Niederschlag':'')+'</div></div></div>'
+    ? '<div class="sh-wx">'+wxIcon(wxKind(w.c),40)+'<div><div class="big">'+w.max+'° <span style="font-size:15px;color:var(--text-2);font-weight:600">/ '+w.min+'°</span> '+rainChip(w,true)+'</div>'
+      + '<div class="meta">'+WXL[wxKind(w.c)]+' in '+esc(wxPlace(iso))+'<br>'+rainLine(w)+'</div></div></div>'
     : '<div class="sh-wx"><div class="meta">Keine Vorhersage für '+esc(wxPlace(iso))+' — außerhalb des 16-Tage-Fensters oder Ort ohne Koordinaten.</div></div>';
+  const recs = recsFor(iso);
+  const recBox = recs.length
+    ? '<div class="f"><span class="fl">Passt zu diesem Wetter</span><div class="chips">'
+      + recs.map(function(r){
+          return '<button class="rec" type="button" data-rec="'+r.i+'" data-iso="'+iso+'">'
+            + '<span class="k">'+KIND_ICON[r.o.k]+'</span>'+esc(r.o.t)+'</button>';
+        }).join("") + '</div></div>'
+    : "";
 
   sheet.innerHTML =
     '<div class="sh-head">'
@@ -880,6 +1066,7 @@ function openDay(iso){
     + '<button type="button" class="close" id="closeD" aria-label="Schließen">✕</button></div></div>'
     + '<p class="sh-sub">'+(x.frei?"Frei":(x.mode||"Kein Eintrag"))+(blockLen>1?' · Tag '+(diffD(b.from,iso)+1)+' von '+blockLen:'')+'</p>'
     + wxBox
+    + recBox
     + '<div class="f"><span class="fl">Status</span><div class="chips">'
       + '<button class="chip frei" type="button" data-t="frei" aria-pressed="'+(!!x.frei)+'">Frei</button>'
       + '<button class="chip" type="button" data-m="TA" aria-pressed="'+(x.mode==="TA")+'">TA</button>'
@@ -970,6 +1157,12 @@ function openSettings(){
           + '<button class="linkbtn" type="button" data-pd="'+i+'">Entfernen</button></div>';
       }).join("")
     + '</div><button class="addbtn" type="button" id="addPerson">+ Person hinzufügen</button></div>'
+    + '<div class="f"><label for="sTok">Sync-Token (nur auf deinen Geräten)</label>'
+    + '<input type="password" id="sTok" value="'+esc(sync.token)+'" placeholder="github_pat_… — leer lassen zum Mitlesen" autocomplete="off"></div>'
+    + '<div class="f"><span class="fl">Sync</span><div class="chips">'
+    + '<button class="chip" type="button" id="pullNow">Jetzt holen</button>'
+    + '<button class="chip" type="button" id="pushNow">Jetzt hochladen</button></div>'
+    + '<p class="hint" style="margin-top:12px">Mit Token schreibt dieses Gerät den Plan nach <b>'+esc(sync.repo)+'/'+esc(sync.path)+'</b>; deine anderen Geräte holen ihn beim Öffnen. Ohne Token liest das Gerät nur mit — genau das bekommt die Familie über den normalen Link.</p></div>'
     + '<div class="f"><span class="fl">Plan teilen &amp; sichern</span><div class="chips">'
     + '<button class="chip" type="button" id="shareJ">Link kopieren</button>'
     + '<button class="chip" type="button" id="expJ">Export</button>'
@@ -1005,6 +1198,19 @@ function openSettings(){
     };
   });
   sheet.querySelector("#addPerson").onclick = function(){ if(addPerson()){ saved(); render(); openSettings(); } };
+  sheet.querySelector("#sTok").onchange = function(e){
+    sync.token = e.target.value.trim(); saveSync(); remoteSha = null;
+    setSync(sync.token ? "idle" : "reader");
+    toast(sync.token ? "Sync aktiv" : "Sync aus");
+  };
+  sheet.querySelector("#pullNow").onclick = async function(){
+    try{
+      const r = await pullRemote();
+      if(!r){ toast("Noch kein plan.json"); return; }
+      S = r; save(); applyView(); render(); loadWeather(); toast("Geholt");
+    }catch(e){ toast("Fehler: "+e.message); }
+  };
+  sheet.querySelector("#pushNow").onclick = function(){ pushRemote().then(function(){ toast("Hochgeladen"); }); };
 
   sheet.querySelector("#shareJ").onclick = function(){
     const url = location.origin + location.pathname + "#plan=" + b64enc(JSON.stringify(S));
@@ -1066,6 +1272,19 @@ document.addEventListener("keydown", function(e){
 });
 document.addEventListener("click", function(e){
   if(blockClick){ blockClick = false; e.preventDefault(); e.stopPropagation(); return; }
+  const kk = e.target.closest("[data-kind]");
+  if(kk){
+    const i = +kk.dataset.kind, order = ["any","out","in"];
+    S.ideas[i].k = order[(order.indexOf(S.ideas[i].k) + 1) % 3];
+    saved(); renderIdeas(); return;
+  }
+  const rc = e.target.closest("[data-rec]");
+  if(rc){
+    const i = +rc.dataset.rec, iso = rc.dataset.iso, cur = get(iso).what;
+    set(iso, {what: cur ? cur+" · "+S.ideas[i].t : S.ideas[i].t});
+    S.ideas.splice(i,1);
+    saved(); render(); openDay(iso); return;
+  }
   const d = e.target.closest("[data-delidea]");
   if(d){ S.ideas.splice(+d.dataset.delidea,1); saved(); renderIdeas(); return; }
   if(e.target.closest("[data-idea]")) return;
@@ -1074,7 +1293,7 @@ document.addEventListener("click", function(e){
 }, true);
 
 document.getElementById("addIdea").onclick = function(){
-  S.ideas.push("Neue Idee"); saved(); renderIdeas();
+  S.ideas.push({t:"Neue Idee", k:"any"}); saved(); renderIdeas();
   const els = document.querySelectorAll("[data-idea]");
   const last = els[els.length-1];
   if(last){ last.focus(); const sel = window.getSelection(); if(sel && sel.selectAllChildren) sel.selectAllChildren(last); }
@@ -1082,7 +1301,7 @@ document.getElementById("addIdea").onclick = function(){
 document.getElementById("ideas").addEventListener("blur", function(e){
   const el = e.target.closest("[data-idea]"); if(!el) return;
   const t = el.textContent.trim(), i = +el.dataset.idea;
-  if(t) S.ideas[i] = t; else S.ideas.splice(i,1);
+  if(t) S.ideas[i].t = t; else S.ideas.splice(i,1);
   saved(); renderIdeas();
 }, true);
 
@@ -1096,6 +1315,8 @@ checkSeedVersion();
 applyView();
 render();
 loadWeather();
+setSync(syncState);
+initialSync();
 
 if("serviceWorker" in navigator && location.protocol === "https:"){
   window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
