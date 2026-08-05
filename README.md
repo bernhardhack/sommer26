@@ -1,6 +1,6 @@
 # Sommer 26
 
-A family holiday planner. Week grid or day list, free days marked with a highlighter band, live weather that follows wherever you are that day, and an ideas list you can drag onto the calendar.
+A family holiday planner. Week grid or day list, free days shown as a continuous soft band, live weather that follows wherever you are that day, and an ideas list you can drag onto the calendar.
 
 Everything is editable in the browser. No build step, no dependencies, no backend.
 
@@ -33,15 +33,27 @@ It has to be **https** for the offline cache to switch on. GitHub Pages is https
 
 It then opens full screen with no browser chrome, keeps working without signal, and shows the `26` icon.
 
-**Updating it later:** push a new `index.html` to GitHub, then bump `CACHE = "sommer26-v1"` to `v2` in `sw.js` and push that too. Without the bump, phones may keep serving the cached copy.
+**Updating it later:** push a new `index.html`, then bump `CACHE` in `sw.js` (currently `sommer26-v2`). Without the bump, phones may keep serving the cached copy.
 
-## How the data works
+## How the data works — and what other people see
 
-The plan lives in the browser's local storage on each device — it is not synced. To move it:
+There is no server. That has consequences worth being explicit about:
 
-**Einstellungen → Export** writes a JSON file. **Import** reads it back on another device. **Zurücksetzen** restores the original plan.
+- **A first-time visitor** sees the plan baked into `index.html` (the `seed()` function).
+- **Their edits save to their own browser only.** Nobody sees anyone else's changes, and yours don't reach them.
+- **Once someone has edited anything**, their local copy wins forever — a newer `seed()` pushed to GitHub would otherwise never reach them.
 
-If you'd rather the plan travel with the file itself, export the JSON and paste it into the `seed()` function near the top of the `<script>` block in `index.html`. Then anyone opening the link sees the current plan, and local edits layer on top of it.
+That last point is handled by `SEED_VERSION` at the top of the script. Bump it whenever you change the published plan; anyone with local edits then gets a banner offering the new version or letting them keep theirs.
+
+Three ways to move a plan between people or devices:
+
+| | What it does |
+|---|---|
+| **Link kopieren** | Packs the whole plan into a URL. Whoever opens it is asked whether to load it. Good for sharing a snapshot. |
+| **Export / Import** | Same data as a JSON file. |
+| **Edit `seed()`** | Export the JSON, paste it into `seed()`, bump `SEED_VERSION`, push. Now it's the published plan everyone starts from. |
+
+For genuinely shared, live editing you'd need a backend — a Gist, Supabase, or similar. That's a different project.
 
 ## Weather
 
@@ -61,4 +73,8 @@ Two limits worth knowing:
 
 ## Legend
 
-`TA` Telearbeit · `ZA` Zeitausgleich · `Büro` · `Offen` not yet fixed · green band = a run of free days
+`TA` Telearbeit · `ZA` Zeitausgleich · `Büro` · `offen` not yet fixed · green band = a run of free days
+
+## Design
+
+Plus Jakarta Sans, warm off-white ground, soft-shadowed white cards, muted sage and coral accents. Free-day runs render as one continuous soft band with rounded ends — the same visual grammar as a date-range picker.
