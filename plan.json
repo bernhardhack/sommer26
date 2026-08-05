@@ -223,9 +223,13 @@
       "k": "any"
     },
     {
+      "t": "AI Kurs",
+      "k": "any"
+    },
+    {
       "t": "Neue Idee",
       "k": "any"
     }
   ],
-  "updatedAt": 1785922342358
+  "updatedAt": 1785922349123
 }
