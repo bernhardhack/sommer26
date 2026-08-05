@@ -72,7 +72,9 @@ For several people editing at once you'd still want real merging. This resolves 
 Two limits worth knowing:
 
 - The forecast reaches **16 days out**. Days beyond that show `—` and fill in as they come into range.
-- Each day shows **rain probability** as a coloured chip — grey under 25 %, mint to 60 %, solid teal above. A day counts as *wet* if rain is expected for 4+ hours, 3+ mm, or at 60 %+ probability. The day sheet spells out probability, millimetres and hours.
+- Each day shows **rain probability** as a coloured chip with a three-bar duration meter: one bar under 2 hours, two up to 6, three beyond. Probability tells you whether it rains; the bars tell you whether it rains all day. 90 % for one hour and 90 % for nine look nothing alike.
+- The chip colour is a verdict, not a restatement of the number: grey under 25 %, mint to 60 %, solid teal for a day worth staying in. A near-certain but brief shower stays mint — high odds of getting wet for twenty minutes is not an indoor day.
+- The day sheet spells out probability, millimetres and hours in words.
 - Each day's forecast is fetched for **that day's location** — destination if you're travelling, otherwise the place, otherwise the last place carried forward. Type a location the app doesn't know and it geocodes it automatically on save.
 
 ## Editing

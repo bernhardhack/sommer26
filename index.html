@@ -125,6 +125,9 @@ h1{font-weight:800;font-size:clamp(34px,6.2vw,54px);line-height:1.05;letter-spac
 .rain.lo{background:#F0F0EC;color:var(--text-2)}
 .rain.mid{background:#DFEDEB;color:var(--teal)}
 .rain.hi{background:var(--teal);color:#fff}
+.mtr{display:inline-flex;align-items:flex-end;gap:1.5px;margin-left:5px;vertical-align:-1px}
+.mtr i{width:3px;height:8px;border-radius:1px;background:currentColor;opacity:.26}
+.mtr i.on{opacity:1}
 .wx.empty{opacity:.4}
 .wx.empty .t{color:var(--text-3);font-weight:500;font-size:13px}
 
@@ -262,8 +265,13 @@ table.wxt{border-collapse:separate;border-spacing:4px;font-family:var(--font)}
   .wxt th.ph{min-width:0;padding-right:8px}
   .wxt thead th.ph{min-width:108px}
   .wxt th.ph .pn{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:74px}
-  .wxt th.dh{min-width:52px}
-  .wxt td.wc{min-width:52px;padding:6px 2px}
+  .wxt th.dh{min-width:50px}
+  .wxt td.wc{min-width:50px;padding:6px 2px}
+  .wxt td.wc svg{width:17px;height:17px}
+  .wxt td.wc .ct{font-size:13px}
+  .wxt td.wc .cr{font-size:9.5px;padding:1px 4px}
+  .mtr{margin-left:3px;gap:1px}
+  .mtr i{width:2.5px;height:6px}
   .pinbtn{width:24px;height:24px}
 }
 .pl-row .nm{flex:1;min-width:0;font-weight:500}
@@ -381,7 +389,7 @@ footer{margin-top:52px;padding-top:24px;border-top:1px solid var(--line);font-si
   .rw-date{grid-area:date}.rw-main{grid-area:main}.rw-wx{grid-area:wx}
   .rw-tags{grid-area:tags;justify-content:flex-start;flex-wrap:wrap;min-width:0}
   .rw-wx .wx{flex-wrap:wrap;white-space:normal}
-  .rh{display:none}
+  .day .rh{display:none}
   .sheet{left:0;top:auto;bottom:0;transform:translateY(16px);width:100vw;max-height:92vh;
     border-radius:20px 20px 0 0;padding:24px max(20px,env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom))}
   .sheet.on{transform:translateY(0)}
@@ -1068,8 +1076,27 @@ function whoHTML(iso){
 function isWet(w){
   if(!w) return false;
   if(w.hours != null && w.hours >= 4) return true;
-  if(w.sum   != null && w.sum   >= 3) return true;
+  if(w.sum   != null && w.sum   >= 4) return true;
+  /* a near-certain but brief shower is not a day indoors, however
+     alarming the percentage looks on its own */
+  if(w.hours != null && w.hours < 2) return false;
   return (w.pp != null && w.pp >= 60);
+}
+/* Three bars for duration: under 2 h, 2-6 h, 6 h and over. Probability
+   says whether it rains, this says whether it rains all day. */
+function rainBars(h){
+  if(h == null || h < 1) return "";
+  const n = h >= 6 ? 3 : (h >= 2 ? 2 : 1);
+  let out = '<span class="mtr" aria-hidden="true">';
+  for(let i = 0; i < 3; i++) out += '<i'+(i < n ? ' class="on"' : '')+'></i>';
+  return out + '</span>';
+}
+function rainWord(w){
+  const h = w && w.hours;
+  if(h == null || h < 1) return "kaum Regen";
+  if(h < 2) return "kurzer Schauer";
+  if(h < 6) return Math.round(h)+" Std. Regen";
+  return "Dauerregen, "+Math.round(h)+" Std.";
 }
 function rainChip(w, full){
   if(!w) return "";
@@ -1078,7 +1105,8 @@ function rainChip(w, full){
   if(pp <= 0 && !(w.sum > 0)) return "";
   const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
   const extra = (full && hrs >= 2) ? '<span class="rh"> · '+Math.round(hrs)+' h</span>' : "";
-  return '<span class="rain '+lvl+'" title="Regenwahrscheinlichkeit">'+pp+'%'+extra+'</span>';
+  return '<span class="rain '+lvl+'" title="'+pp+' % · '+rainWord(w)+'">'
+    + pp + '%' + extra + rainBars(hrs) + '</span>';
 }
 function wxHTML(iso, full){
   const w = wxFor(iso);
@@ -1192,10 +1220,10 @@ function renderCompare(){
       const pp = w.pp || 0;
       const lvl = isWet(w) ? "hi" : (pp >= 25 ? "mid" : "lo");
       h += '<td class="wc'+(here?" here":"")+(dim?" dim":"")+(iso===TODAY?" today":"")+'"'
-         + ' title="'+esc(r.n)+' · '+WXL[wxKind(w.c)]+' · '+pp+'%">'
+         + ' title="'+esc(r.n)+' · '+WXL[wxKind(w.c)]+' · '+pp+' % · '+rainWord(w)+'">'
          + wxIcon(wxKind(w.c), 20)
          + '<span class="ct">'+w.max+'°</span>'
-         + '<span class="cr '+lvl+'">'+pp+'</span></td>';
+         + '<span class="cr '+lvl+'">'+pp+rainBars(w.hours)+'</span></td>';
     });
     h += '</tr>';
   });
@@ -1210,7 +1238,9 @@ function renderLegend(){
     '<span class="leg-item"><span class="tag za">ZA</span> Zeitausgleich</span>'+
     '<span class="leg-item"><span class="tag buero">Büro</span> Büro</span>'+
     '<span class="leg-item"><span class="tag offen">offen</span> noch nicht fix</span>'+
-    '<span class="leg-item"><span style="display:inline-block;width:30px;height:14px;background:var(--free);border-radius:999px"></span> freier Block</span>';
+    '<span class="leg-item"><span style="display:inline-block;width:30px;height:14px;background:var(--free);border-radius:999px"></span> freier Block</span>'+
+    '<span class="leg-item"><span class="rain lo">30%<span class="mtr"><i class="on"></i><i></i><i></i></span></span> kurzer Schauer</span>'+
+    '<span class="leg-item"><span class="rain hi">80%<span class="mtr"><i class="on"></i><i class="on"></i><i class="on"></i></span></span> Dauerregen</span>';
   document.getElementById("legPeople").innerHTML = S.people.map(function(p){
     return '<span class="leg-item"><span class="p" style="background:'+esc(p.c)+'">'+esc(p.id[0])+'</span> '+esc(p.name)+'</span>';
   }).join("");
