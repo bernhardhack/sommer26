@@ -232,24 +232,24 @@
     },
     {
       "t": "Wandern: Hochmölbing / Gesäuse",
-      "k": "any"
+      "k": "out"
     },
     {
       "t": "Wandern: Grundlsee - Taublitz / Pühringer Hütte",
-      "k": "any"
+      "k": "out"
     },
     {
       "t": "Klettersteig Trattenbach",
-      "k": "any"
+      "k": "out"
     },
     {
       "t": "Triftsteig",
-      "k": "any"
+      "k": "out"
     },
     {
       "t": "Tour: Hintergebirge, Biwackplatz",
       "k": "any"
     }
   ],
-  "updatedAt": 1785922527801
+  "updatedAt": 1785922534781
 }
